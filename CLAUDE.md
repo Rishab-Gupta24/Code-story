@@ -23,4 +23,4 @@ Code Story is a stdio MCP server (Python 3.11+, `uv`) that lets a coding assista
 - Run `uv run pytest -v` after every change. Python 3.11+ is the minimum; don't use newer-only syntax.
 - Don't add hooks, file watchers, or a second reviewer model before Phase 5.
 - Log entries are append-only. Entry format is specified in `tasks.md`; don't change it without updating the spec.
-- `test_reject_symlink_escape` skips on Windows without Developer Mode; it must pass in Linux CI before the Phase 1 gate closes.
+- `test_reject_symlink_escape` skips on Windows without Developer Mode; Linux CI is where it actually runs, so check CI before trusting a local "skipped".

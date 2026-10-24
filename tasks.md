@@ -1,6 +1,6 @@
 # Code Story — Build Plan, Rules, and Verification (`0.1.0`)
 
-**Current Status:** Phase 1 implemented. `tests/test_phase1_log.py` run locally on Windows 11 with Python 3.11.16 and 3.14.7: `7 passed, 1 skipped` on both. `test_reject_symlink_escape` was skipped because Windows refused to create the symlink (Developer Mode off). The Phase 1 gate stays open until that test passes in Linux CI.
+**Current Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off).
 
 Build and verify one phase at a time. Do not advance to the next deterministic phase until the current phase's gate is closed.
 
@@ -55,7 +55,7 @@ Build and verify one phase at a time. Do not advance to the next deterministic p
 
 ## Phase 1 — Validated local logging and automated tests
 
-**Status:** Phase 1 implemented. `tests/test_phase1_log.py` run locally on Windows 11 with Python 3.11.16 and 3.14.7: `7 passed, 1 skipped` on both. `test_reject_symlink_escape` was skipped because Windows refused to create the symlink (Developer Mode off). The Phase 1 gate stays open until that test passes in Linux CI.
+**Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off).
 
 **Goal:** Make `record_change` validate inputs, verify excerpt presence, check for common secret patterns, and write readable entries to `<project_root>/.ai-code-log.md`, backed by an automated `pytest` suite from day one.
 
@@ -89,7 +89,7 @@ Build and verify one phase at a time. Do not advance to the next deterministic p
 5. **Phase 1 Automated Test Suite (`tests/test_phase1_log.py` — 8 named tests):**
    - [x] `test_record_two_valid_entries`: PASSED — Records two entries and checks IDs, `±HHMM` timestamps, per-file hashes, excerpt hashes, line spans, and `(no excerpt tracked)` for secondary files.
    - [x] `test_reject_relative_root_and_path_traversal`: PASSED — Rejects a relative `project_root`, `../` traversal, and absolute file paths without changing existing log entries.
-   - [ ] `test_reject_symlink_escape`: SKIPPED locally (Windows refused symlink creation); not yet run on Linux — Rejects a symlink pointing outside `project_root` and confirms the log is unchanged.
+   - [x] `test_reject_symlink_escape`: PASSED in Linux CI (skips locally on Windows when symlink creation is refused) — Rejects a symlink pointing outside `project_root` and confirms the log is unchanged.
    - [x] `test_reject_missing_or_blank_fields`: PASSED — Rejects empty/whitespace fields, empty or missing `files`, and blank `project_root` without changing existing log entries; collapses newlines in `summary`.
    - [x] `test_reject_fabricated_excerpt`: PASSED — Rejects an excerpt that does not appear in the named source file, and verifies `
 ` vs. `

@@ -9,14 +9,14 @@ Code Story helps a coding assistant explain meaningful changes as it works. It w
 ## What works in version `0.1.0`
 
 - **Validated local logging (`record_change`):**
-  - Validates `project_root` and enforces relative path containment inside the project root, rejecting `../` traversal, absolute paths, and symlinks that resolve outside it *(symlink test not yet run on a platform that allows symlinks; see test status)*.
+  - Validates `project_root` and enforces relative path containment inside the project root, rejecting `../` traversal, absolute paths, and symlinks that resolve outside it.
   - Normalizes line endings (`\r\n` → `\n`) and trims leading/trailing blank lines on `code_excerpt`, enforcing a post-normalization cap of **100 lines** and **4,000 characters**.
   - Verifies at record time that the normalized `code_excerpt` exists in at least one listed source file, recording the first match's 1-based line span (`lines <start>–<end>`) and normalized excerpt SHA-256 alongside each file's whole-file SHA-256.
   - Scans inputs for common secret patterns: hard-rejects high-confidence tokens (`sk-`, `AKIA`/`ASIA`, `gh[pousr]_`, `xox[baprs]-`, `-----BEGIN ... PRIVATE KEY-----`) and returns a non-blocking warning on generic `password = "..."` or `api_key = "..."` assignments. Pattern checks reduce accidental leaks of common token formats but cannot catch every secret.
   - Chooses an outer Markdown code fence longer than any backtick run inside `code_excerpt` and ensures clean entry separation even if `.ai-code-log.md` was hand-edited without a trailing newline.
   - Serializes writes with a 15-second cross-process lock (`.ai-code-log.md.lock`), returning `LOCK_TIMEOUT` with no write if the wait expires.
 - **Basic retrieval (`list_changes`, `get_change`):** implemented, not yet covered by automated tests (Phase 2). `get_change` warns when a recorded file's whole-file hash changed or the file is missing.
-- **Automated test status:** Phase 1 implemented. `tests/test_phase1_log.py` run locally on Windows 11 with Python 3.11.16 and 3.14.7: `7 passed, 1 skipped` on both. `test_reject_symlink_escape` was skipped because Windows refused to create the symlink (Developer Mode off). The Phase 1 gate stays open until that test passes in Linux CI.
+- **Automated test status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off).
 
 ## Example entry
 
