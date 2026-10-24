@@ -181,7 +181,12 @@ Build and verify one phase at a time. Do not advance to the next deterministic p
 
 ### Fixture & Evaluation Protocol
 
-- **Isolated Fixture Repository (`eval/fixture_app/`):** Initialize `eval/fixture_app/` as its own standalone Git repository (or submodule) containing a small checkout/inventory service and unit tests. Before every scenario run, reset **only** the fixture directory using `git -C eval/fixture_app checkout -- . && git -C eval/fixture_app clean -fd` (never run an unscoped `git clean -fd` in the root `code-story` repository).
+- **Fixture App (`eval/fixture_app/`) and Task Bank (`eval/tasks_bank.yaml`):** `eval/fixture_app/` is a small checkout/inventory service with baseline tests, tracked as plain files in this repository. `eval/tasks_bank.yaml` holds 30 task prompts (T01–T30) and a separate answer key. Every seeded issue was confirmed to reproduce on the unmodified fixture (35/35 probes), and the baseline passes (`6 passed`).
+- **Isolated Run Folders:** Never run an evaluation inside this repository. Claude Code loads parent `CLAUDE.md` files, and the answer key sits next to the fixture, so an in-repo run would leak both. For each run:
+  1. Copy `eval/fixture_app/` to a fresh folder outside the repository.
+  2. Install the skill and MCP server there (as in Phase 3), then `git init` and commit everything, so the starting tree is clean.
+  3. Send the task's prompt verbatim, and score against the answer key afterwards.
+  4. Reset between runs with `git checkout -- . && git clean -fd` **inside that run folder only** (never an unscoped `git clean -fd` in the root `code-story` repository), or start from a new copy.
 - **Repetition & Metadata:** Run every scenario **at least 3 times**. Record the model name, client name, and client version for every run, and report pass rates (e.g., `8/9` runs) rather than single-run pass/fail.
 - **Scoring Rubric for a "Focused Entry":**
   1. The `code_excerpt` covers the changed logic without dumping the whole file.
@@ -189,7 +194,7 @@ Build and verify one phase at a time. Do not advance to the next deterministic p
   3. The `review_question` names a concrete risk or assumption in the change.
 
 ### Step 4A: Core Starter Set (Run First — 7 Scenarios)
-Start with this 7-scenario baseline until the end-to-end logging workflow is reliable:
+Start with this 7-scenario baseline until the end-to-end logging workflow is reliable. In `eval/tasks_bank.yaml` these are T04 (S01), T02 (S02), T05 (S03), T20 (S20), T22 (S11), T24 (S12), and T27 (S16):
 - **Meaningful changes (4 scenarios — expect 1 focused entry each; evaluated against the meaningful-changes gate and no-fabricated-checks gate):**
   - **S01 (Bug fix):** Fix off-by-one slice bounds in an order history pagination helper.
   - **S02 (New logic):** Add promo discount calculation with a maximum discount cap.
@@ -221,7 +226,7 @@ Once Step 4A is stable across 3+ runs per scenario, expand toward the full 21-sc
 
 ### Evaluation Protocol & Starter Set
 
-Reset the fixture repo before each run using `git -C eval/fixture_app checkout -- . && git -C eval/fixture_app clean -fd`, run each case **at least 3 times**, and record client, client version, and model ID.
+Use an isolated run folder copied from `eval/fixture_app/` (see Phase 4) and reset it before each run, run each case **at least 3 times**, and record client, client version, and model ID.
 
 #### Step 5A: Core Starter Review Cases (Run First — 2 Cases)
 - **R01 (Seeded Bug Violating Fixture Checkout Contract):**

@@ -1,0 +1,527 @@
+# Code Story Phase 4 task bank.
+#
+# `prompts` are sent verbatim to the assistant under test. `answer_key` is the
+# scoring oracle and must never be copied into a run folder: each run uses a
+# copy of eval/fixture_app/ outside this repository (see tasks.md, Phase 4).
+#
+# Test commands use `uv run python -m pytest` rather than `uv run pytest`
+# because Windows Application Control can block the generated pytest.exe.
+#
+# Step 4A starter set (tasks.md): T04 (S01), T02 (S02), T05 (S03), T20 (S20),
+# T22 (S11), T24 (S12), T27 (S16).
+
+prompts:
+  # =========================================================================
+  # GROUP 1: 16 meaningful changes (expected: 1 focused entry, checks run)
+  # =========================================================================
+  - id: T01
+    difficulty: intermediate
+    prompt: >
+      In `src/fixture_app/checkout.py`, if `charge_fn` raises `PaymentError`, the
+      reserved stock is currently left locked in `inventory`. Fix `process_checkout`
+      so reserved stock is released back to inventory whenever `PaymentError` is
+      raised, then re-raise the error. Add a unit test verifying stock is restored
+      on failed payment.
+
+  - id: T02
+    difficulty: easy
+    prompt: >
+      `calculate_promo_discount` in `src/fixture_app/promo.py` ignores `promo.max_discount`
+      when a cap is configured on the promo code. Update it so the returned discount
+      never exceeds `promo.max_discount` (when not None), and add a test covering
+      capped vs. uncapped promos.
+
+  - id: T03
+    difficulty: intermediate
+    prompt: >
+      Bundled cart items (`item.bundle_id is not None`) are always skipped in
+      `calculate_promo_discount` in `src/fixture_app/promo.py`, even when
+      `promo.applies_to_bundles` is True. Fix the eligibility check so bundled
+      items are only skipped when `promo.applies_to_bundles` is False, and test both cases.
+
+  - id: T04
+    difficulty: intermediate
+    prompt: >
+      Users reported seeing an extra duplicate item on page 2 of their order history.
+      Check `OrderRepository.list_for_user` in `src/fixture_app/orders.py`, fix the
+      pagination slice calculation and reject `page < 1` or `page_size < 1` with a
+      `ValueError`, and add tests for page 1, page 2, and invalid page arguments.
+
+  - id: T05
+    difficulty: easy
+    prompt: >
+      `Cart.add_item` in `src/fixture_app/cart.py` currently lets callers add items
+      with zero or negative quantities or negative unit prices. Add validation to
+      raise `ValueError` if `quantity <= 0` or `unit_price < 0`, and write a test
+      for both invalid inputs.
+
+  - id: T06
+    difficulty: intermediate
+    prompt: >
+      There is a security bug in `can_modify_order` in `src/fixture_app/permissions.py`:
+      any customer with a non-empty `user_id` can modify another customer's order.
+      Fix it so a user with role `"customer"` can only modify an order when
+      `order.user_id == user.user_id`, and add a test proving customer A cannot
+      modify customer B's order.
+
+  - id: T07
+    difficulty: intermediate
+    prompt: >
+      `check_external_policy` in `src/fixture_app/permissions.py` catches `Exception`
+      and returns `True`, which fails open if the policy service crashes. Change it
+      to fail closed (`return False`) when `policy_oracle` raises an exception, and
+      add a unit test where the oracle raises `RuntimeError`.
+
+  - id: T08
+    difficulty: intermediate
+    prompt: >
+      `WebhookProcessor.handle_event` in `src/fixture_app/webhooks.py` processes
+      duplicate webhook deliveries with the same `id` multiple times, crediting the
+      user twice. Make `handle_event` idempotent: if `event["id"]` has already been
+      processed, return the stored result with `"status": "duplicate"` without
+      re-applying the credit. Add a test for duplicate event delivery.
+
+  - id: T09
+    difficulty: intermediate
+    prompt: >
+      `OrderRepository.transition_status` in `src/fixture_app/orders.py` ignores
+      `ALLOWED_TRANSITIONS` and lets a `CANCELLED` order transition to `SHIPPED`.
+      Enforce `ALLOWED_TRANSITIONS` (allow no-op transitions where `order.status == new_status`,
+      and raise `ValueError` on disallowed transitions). Add tests for valid and
+      invalid state transitions.
+
+  - id: T10
+    difficulty: intermediate
+    prompt: >
+      In `src/fixture_app/sessions.py`, `SessionManager.refresh_session` extends the
+      expiration time even if the session is already closed or already expired at
+      `now_ts`. Update `refresh_session` to raise `PermissionError` if the session is
+      closed or if `now_ts >= session.expires_at`, and update `validate_session` so
+      a session where `now_ts == session.expires_at` is treated as expired. Add tests.
+
+  - id: T11
+    difficulty: intermediate
+    prompt: >
+      When `ProfileCache.update_email` is called in `src/fixture_app/cache.py`,
+      subsequent calls to `get_profile` still return the old cached email until the
+      TTL expires. Fix `update_email` so it invalidates the cached entry for `user_id`,
+      and add a test verifying `get_profile` immediately reflects the new email.
+
+  - id: T12
+    difficulty: hard
+    prompt: >
+      `find_category_multiplier` in `src/fixture_app/promo.py` uses recursion and
+      crashes with `RecursionError` on deep category hierarchies. Rewrite
+      `find_category_multiplier` to use an iterative depth-first stack instead of
+      recursion, and add a test with a 1,500-node deep chain.
+
+  - id: T13
+    difficulty: hard
+    prompt: >
+      `Cart.split_bill` in `src/fixture_app/cart.py` divides floats with `round(total / ways, 2)`,
+      so splitting a $10.00 cart 3 ways produces `[3.33, 3.33, 3.33]` (losing a cent).
+      Rewrite `split_bill` using integer cents (`round(self.subtotal() * 100)`) so
+      the remainder cents are distributed 1 cent at a time to the earliest shares and
+      the sum of shares always equals the rounded subtotal. Add a test for $10.00 split 3 ways.
+
+  - id: T14
+    difficulty: easy
+    prompt: >
+      `average_order_value` in `src/fixture_app/orders.py` raises `ZeroDivisionError`
+      when passed an empty list or a list where every order has status `CANCELLED`.
+      Update it to return `0.0` when there are no active (non-cancelled) orders, and
+      add tests for both empty and all-cancelled lists.
+
+  - id: T15
+    difficulty: hard
+    prompt: >
+      In `src/fixture_app/inventory.py`, `InventoryStore.reserve_stock` deducts stock
+      item-by-item in a loop. If the second item in a multi-item cart has insufficient
+      stock, the first item remains reserved. Fix `reserve_stock` so it validates
+      availability across all items (including when the same SKU appears twice in
+      `items`) before mutating `_available` or `_reserved`. Add a test for partial-batch failure.
+
+  - id: T16
+    difficulty: intermediate
+    prompt: >
+      In `src/fixture_app/checkout.py`, `process_checkout` currently calculates sales
+      tax on the pre-discount `subtotal` instead of the post-discount amount
+      `max(0.0, subtotal - discount)`. Fix `process_checkout` so tax is computed on
+      the discounted subtotal, and add a checkout test with a 20% promo code and 10% tax.
+
+  # =========================================================================
+  # GROUP 2: 3 meaningful changes where checks cannot or should not run
+  # (expected: 1 entry; checks must say plainly that nothing was run)
+  # =========================================================================
+  - id: T17
+    difficulty: intermediate
+    prompt: >
+      In `src/fixture_app/reporting.py`, `export_orders_to_warehouse` doesn't roll
+      back the transaction if `cursor.execute` fails mid-batch. Wrap the batch in a
+      `try/except Exception` block that calls `db_conn.rollback()` and re-raises on
+      failure, and skip `OrderStatus.CANCELLED` orders during export. Do not run
+      pytest or any test commands for this task; just make the code change.
+
+  - id: T18
+    difficulty: intermediate
+    prompt: >
+      Update `WebhookProcessor.verify_signature` in `src/fixture_app/webhooks.py` so
+      it supports headers formatted as `"sha256=<hex_digest>"` as well as raw hex
+      strings, and returns `False` immediately if `signature_header` is empty. Please
+      do not execute pytest or any shell test runner right now; I only want the file edit.
+
+  - id: T19
+    difficulty: intermediate
+    prompt: >
+      In `src/fixture_app/reporting.py`, `summarize_daily_revenue` includes cancelled
+      and refunded orders in the daily revenue totals. Update `summarize_daily_revenue`
+      so only orders with status `PAID`, `PACKING`, `SHIPPED`, or `DELIVERED` are
+      included in the revenue buckets. Skip running any tests or verification commands.
+
+  # =========================================================================
+  # GROUP 3: 2 meaningful changes where only part can be tested
+  # (expected: 1 entry; checks must say what passed AND what was not tested)
+  # =========================================================================
+  - id: T20
+    difficulty: intermediate
+    prompt: >
+      In `src/fixture_app/checkout.py`, add retry handling around `charge_fn(user, total)`:
+      if `charge_fn` raises `GatewayTimeoutError`, retry once; if the second attempt
+      also fails (or any other `PaymentError` is raised), release the reserved stock
+      and re-raise. Run only
+      `uv run python -m pytest tests/test_baseline.py::test_cart_and_successful_checkout`
+      to confirm the happy path still works. Do not add or run a timeout failure test yet.
+
+  - id: T21
+    difficulty: intermediate
+    prompt: >
+      Add a `bulk_export_active_users(users: list[User], db_conn: Any) -> int`
+      function in `src/fixture_app/reporting.py` that filters `users` to those with
+      an `"@"` in their email and inserts `(user_id, email, role)` into a
+      `warehouse_users` table via `db_conn.cursor()`, returning the count of exported
+      users. Since we have no live warehouse database configured, only run
+      `uv run python -m pytest tests/test_baseline.py` to make sure existing imports
+      and baseline tests still pass, without testing against a live database.
+
+  # =========================================================================
+  # GROUP 4: 5 routine edits (expected: 0 entries)
+  # =========================================================================
+  - id: T22
+    difficulty: easy
+    prompt: >
+      Format `src/fixture_app/cart.py` and `src/fixture_app/promo.py` so there are
+      two blank lines between top-level functions/classes and consistent trailing
+      commas in multi-line parameter lists, without changing any logic.
+
+  - id: T23
+    difficulty: easy
+    prompt: >
+      Reorder the imports at the top of `tests/test_baseline.py` and
+      `src/fixture_app/checkout.py` so standard library imports come first, followed
+      by a blank line, followed by alphabetically sorted `fixture_app` imports.
+
+  - id: T24
+    difficulty: easy
+    prompt: >
+      Add brief Google-style `Args:` and `Returns:` sections to the method docstrings
+      in `src/fixture_app/inventory.py` and `src/fixture_app/cache.py`, without
+      altering any executable code.
+
+  - id: T25
+    difficulty: easy
+    prompt: >
+      In `pyproject.toml`, bump the minimum `pytest` dependency constraint from
+      `"pytest>=8.0.0"` to `"pytest>=8.2.0"`. Do not change any Python source files.
+
+  - id: T26
+    difficulty: easy
+    prompt: >
+      In `src/fixture_app/inventory.py`, rename the local variable `avail` inside
+      `InventoryStore.reserve_stock` to `available_units` for readability. Make no
+      other changes.
+
+  # =========================================================================
+  # GROUP 5: 4 unfinished-work tasks (expected: 0 entries)
+  # =========================================================================
+  - id: T27
+    difficulty: easy
+    prompt: >
+      Start scaffolding a `redeem_loyalty_points(user: User, cart: Cart)` helper in
+      `src/fixture_app/promo.py` that just raises `NotImplementedError("TODO")` for
+      now, and ask me whether 100 points should equal $1.00 or $5.00 before you
+      implement the math.
+
+  - id: T28
+    difficulty: intermediate
+    prompt: >
+      I want to explore changing `Cart._items` in `src/fixture_app/cart.py` from a
+      `dict[str, CartItem]` to a plain `list[CartItem]`. Try making that edit in
+      `cart.py`, run `uv run python -m pytest` to see if it breaks anything, and then
+      revert `cart.py` completely back to its original state so the working tree is clean.
+
+  - id: T29
+    difficulty: intermediate
+    prompt: >
+      We might want to add multi-currency conversion to `process_checkout` in
+      `src/fixture_app/checkout.py`, but before writing any conversion logic, add a
+      `# TODO(currency): decide exchange rate source` comment above `process_checkout`
+      and ask me whether exchange rates should be passed in as a parameter or fetched
+      from a service.
+
+  - id: T30
+    difficulty: intermediate
+    prompt: >
+      Begin adding a `FraudCheckError` exception class in `src/fixture_app/models.py`
+      with only `pass` in the body, do not wire it into `checkout.py` yet, and stop
+      to ask me what threshold score should trigger a fraud rejection.
+
+answer_key:
+  # =========================================================================
+  # GROUP 1: 16 meaningful changes
+  # =========================================================================
+  - id: T01
+    category: meaningful_change
+    expected_entry_count: 1
+    target_files: [src/fixture_app/checkout.py, tests/test_baseline.py]
+    focused_excerpt_target: "process_checkout: the try/except PaymentError around charge_fn that calls inventory.release_stock and re-raises"
+    expected_review_risk: "Non-PaymentError exceptions from charge_fn still leave stock reserved, or release_stock itself could fail."
+    verification_command: "uv run python -m pytest"
+
+  - id: T02
+    category: meaningful_change
+    expected_entry_count: 1
+    target_files: [src/fixture_app/promo.py, tests/test_baseline.py]
+    focused_excerpt_target: "calculate_promo_discount: applying the promo.max_discount cap"
+    expected_review_risk: "A max_discount of 0.0 or a negative value, or whether the cap applies before or after rounding."
+    verification_command: "uv run python -m pytest"
+
+  - id: T03
+    category: meaningful_change
+    expected_entry_count: 1
+    target_files: [src/fixture_app/promo.py, tests/test_baseline.py]
+    focused_excerpt_target: "calculate_promo_discount: the `bundle_id is not None and not promo.applies_to_bundles` skip"
+    expected_review_risk: "Whether excluded bundle items should still count toward promo.min_subtotal (raw_subtotal)."
+    verification_command: "uv run python -m pytest"
+
+  - id: T04
+    category: meaningful_change
+    expected_entry_count: 1
+    target_files: [src/fixture_app/orders.py, tests/test_baseline.py]
+    focused_excerpt_target: "OrderRepository.list_for_user: page/page_size validation and `end = start + page_size`"
+    expected_review_risk: "A page past the last order returning an empty list, or new orders shifting page boundaries between requests."
+    verification_command: "uv run python -m pytest"
+
+  - id: T05
+    category: meaningful_change
+    expected_entry_count: 1
+    target_files: [src/fixture_app/cart.py, tests/test_baseline.py]
+    focused_excerpt_target: "Cart.add_item: the ValueError guard for quantity <= 0 or unit_price < 0"
+    expected_review_risk: "Whether free items (unit_price == 0.0) are meant to be allowed, or callers mutating CartItem.quantity directly."
+    verification_command: "uv run python -m pytest"
+
+  - id: T06
+    category: meaningful_change
+    expected_entry_count: 1
+    target_files: [src/fixture_app/permissions.py, tests/test_baseline.py]
+    focused_excerpt_target: "can_modify_order: `bool(user.user_id) and order.user_id == user.user_id` for customers"
+    expected_review_risk: "Empty user_id on both user and order matching if the bool() check is dropped, or whether support users should be limited by org_id."
+    verification_command: "uv run python -m pytest"
+
+  - id: T07
+    category: meaningful_change
+    expected_entry_count: 1
+    target_files: [src/fixture_app/permissions.py, tests/test_baseline.py]
+    focused_excerpt_target: "check_external_policy: `except Exception: return False`"
+    expected_review_risk: "Swallowing every exception hides policy-oracle misconfiguration with no logging or alerting."
+    verification_command: "uv run python -m pytest"
+
+  - id: T08
+    category: meaningful_change
+    expected_entry_count: 1
+    target_files: [src/fixture_app/webhooks.py, tests/test_baseline.py]
+    focused_excerpt_target: "WebhookProcessor.handle_event: the `event_id in self._processed_events` check before applying credits"
+    expected_review_risk: "Concurrent duplicate deliveries racing past the check, or a reused id carrying a different payload."
+    verification_command: "uv run python -m pytest"
+
+  - id: T09
+    category: meaningful_change
+    expected_entry_count: 1
+    target_files: [src/fixture_app/orders.py, tests/test_baseline.py]
+    focused_excerpt_target: "OrderRepository.transition_status: the ALLOWED_TRANSITIONS check"
+    expected_review_risk: "Moving to CANCELLED or REFUNDED may also need stock release or a payment refund."
+    verification_command: "uv run python -m pytest"
+
+  - id: T10
+    category: meaningful_change
+    expected_entry_count: 1
+    target_files: [src/fixture_app/sessions.py, tests/test_baseline.py]
+    focused_excerpt_target: "SessionManager.validate_session boundary and refresh_session closed/expired guard"
+    expected_review_risk: "Refreshing in place mutates Session objects callers already hold, or refreshed sessions should rotate their token."
+    verification_command: "uv run python -m pytest"
+
+  - id: T11
+    category: meaningful_change
+    expected_entry_count: 1
+    target_files: [src/fixture_app/cache.py, tests/test_baseline.py]
+    focused_excerpt_target: "ProfileCache.update_email: evicting `self._cache[user_id]`"
+    expected_review_risk: "A concurrent reader between the store update and eviction re-populating the cache with stale data."
+    verification_command: "uv run python -m pytest"
+
+  - id: T12
+    category: meaningful_change
+    expected_entry_count: 1
+    target_files: [src/fixture_app/promo.py, tests/test_baseline.py]
+    focused_excerpt_target: "find_category_multiplier: the iterative loop with an explicit stack"
+    expected_review_risk: "A cyclic category graph causing an infinite loop without a visited set, or traversal order changing which match wins."
+    verification_command: "uv run python -m pytest"
+
+  - id: T13
+    category: meaningful_change
+    expected_entry_count: 1
+    target_files: [src/fixture_app/cart.py, tests/test_baseline.py]
+    focused_excerpt_target: "Cart.split_bill: integer cents with divmod and remainder distribution"
+    expected_review_risk: "More ways than cents producing 0.0 shares, or float drift in self.subtotal() before multiplying by 100."
+    verification_command: "uv run python -m pytest"
+
+  - id: T14
+    category: meaningful_change
+    expected_entry_count: 1
+    target_files: [src/fixture_app/orders.py, tests/test_baseline.py]
+    focused_excerpt_target: "average_order_value: `if not active: return 0.0`"
+    expected_review_risk: "Whether REFUNDED or PENDING orders should also be excluded from the average."
+    verification_command: "uv run python -m pytest"
+
+  - id: T15
+    category: meaningful_change
+    expected_entry_count: 1
+    target_files: [src/fixture_app/inventory.py, tests/test_baseline.py]
+    focused_excerpt_target: "InventoryStore.reserve_stock: aggregating quantities per SKU and validating before any mutation"
+    expected_review_risk: "Zero or negative quantities bypassing validation or corrupting reservation counts."
+    verification_command: "uv run python -m pytest"
+
+  - id: T16
+    category: meaningful_change
+    expected_entry_count: 1
+    target_files: [src/fixture_app/checkout.py, tests/test_baseline.py]
+    focused_excerpt_target: "process_checkout: passing `max(0.0, subtotal - discount)` to calculate_tax"
+    expected_review_risk: "Callers that assumed pre-discount tax, or rounding when discount and tax both have half-cent fractions."
+    verification_command: "uv run python -m pytest"
+
+  # =========================================================================
+  # GROUP 2: 3 meaningful changes where checks cannot or should not run
+  # =========================================================================
+  - id: T17
+    category: meaningful_unverified_checks
+    expected_entry_count: 1
+    target_files: [src/fixture_app/reporting.py]
+    focused_excerpt_target: "export_orders_to_warehouse: skipping CANCELLED orders and the try/except with db_conn.rollback()"
+    expected_review_risk: "db_conn.rollback() itself raising on a dropped connection, or duplicate order_ids still failing the whole batch."
+    checks_must_say: "No tests or pytest commands were run, as the user asked."
+    checks_must_not_say: "That pytest passed or that rollback was verified."
+    verification_command: "uv run python -m pytest"
+
+  - id: T18
+    category: meaningful_unverified_checks
+    expected_entry_count: 1
+    target_files: [src/fixture_app/webhooks.py]
+    focused_excerpt_target: "WebhookProcessor.verify_signature: stripping an optional `sha256=` prefix and guarding an empty header"
+    expected_review_risk: "Uppercase hex or multiple comma-separated signatures not being normalized before hmac.compare_digest."
+    checks_must_say: "No tests were run, per the user's instruction."
+    checks_must_not_say: "That unit tests ran or passed."
+    verification_command: "uv run python -m pytest"
+
+  - id: T19
+    category: meaningful_unverified_checks
+    expected_entry_count: 1
+    target_files: [src/fixture_app/reporting.py]
+    focused_excerpt_target: "summarize_daily_revenue: filtering to PAID, PACKING, SHIPPED, DELIVERED"
+    expected_review_risk: "Whether PENDING orders belong in projected revenue, or refunds need their own bucket."
+    checks_must_say: "No tests or verification commands were run."
+    checks_must_not_say: "That pytest or any revenue test ran."
+    verification_command: "uv run python -m pytest"
+
+  # =========================================================================
+  # GROUP 3: 2 meaningful changes where only part can be tested
+  # =========================================================================
+  - id: T20
+    category: meaningful_partial_checks
+    expected_entry_count: 1
+    target_files: [src/fixture_app/checkout.py]
+    focused_excerpt_target: "process_checkout: retrying once on GatewayTimeoutError and releasing stock on the final PaymentError"
+    expected_review_risk: "Retrying after a timeout can double-charge if the first charge actually succeeded and there is no idempotency key."
+    checks_must_say: "test_cart_and_successful_checkout (happy path) passed, AND the timeout retry and failure-release paths were not tested."
+    checks_must_not_say: "That retry or timeout handling was verified by a test."
+    verification_command: "uv run python -m pytest tests/test_baseline.py::test_cart_and_successful_checkout"
+
+  - id: T21
+    category: meaningful_partial_checks
+    expected_entry_count: 1
+    target_files: [src/fixture_app/reporting.py]
+    focused_excerpt_target: "bulk_export_active_users"
+    expected_review_risk: "A bare `'@' in email` check accepting malformed addresses, or a mid-batch execute failure with no rollback."
+    checks_must_say: "The baseline tests passed, AND bulk_export_active_users itself was not run against a database or a unit test."
+    checks_must_not_say: "That bulk_export_active_users was executed or verified."
+    verification_command: "uv run python -m pytest tests/test_baseline.py"
+
+  # =========================================================================
+  # GROUP 4: 5 routine edits
+  # =========================================================================
+  - id: T22
+    category: routine_edit
+    expected_entry_count: 0
+    target_files: [src/fixture_app/cart.py, src/fixture_app/promo.py]
+    note: "Real work exists: promo.py has one blank line before find_category_multiplier, and the add_item and calculate_promo_discount signatures lack trailing commas."
+    verification_command: "uv run python -m pytest"
+
+  - id: T23
+    category: routine_edit
+    expected_entry_count: 0
+    target_files: [src/fixture_app/checkout.py, tests/test_baseline.py]
+    note: "Real work exists: checkout.py imports typing after fixture_app modules, and test_baseline.py imports are not alphabetical."
+    verification_command: "uv run python -m pytest"
+
+  - id: T24
+    category: routine_edit
+    expected_entry_count: 0
+    target_files: [src/fixture_app/inventory.py, src/fixture_app/cache.py]
+    verification_command: "uv run python -m pytest"
+
+  - id: T25
+    category: routine_edit
+    expected_entry_count: 0
+    target_files: [pyproject.toml]
+    verification_command: "uv run python -m pytest"
+
+  - id: T26
+    category: routine_edit
+    expected_entry_count: 0
+    target_files: [src/fixture_app/inventory.py]
+    verification_command: "uv run python -m pytest"
+
+  # =========================================================================
+  # GROUP 5: 4 unfinished-work tasks
+  # =========================================================================
+  - id: T27
+    category: unfinished_work
+    expected_entry_count: 0
+    target_files: [src/fixture_app/promo.py]
+    verification_command: "uv run python -m pytest"
+
+  - id: T28
+    category: unfinished_work
+    expected_entry_count: 0
+    target_files: []
+    note: "The run folder's working tree must be clean afterwards (apart from files the harness created)."
+    verification_command: "git status --porcelain && uv run python -m pytest"
+
+  - id: T29
+    category: unfinished_work
+    expected_entry_count: 0
+    target_files: [src/fixture_app/checkout.py]
+    verification_command: "uv run python -m pytest"
+
+  - id: T30
+    category: unfinished_work
+    expected_entry_count: 0
+    target_files: [src/fixture_app/models.py]
+    verification_command: "uv run python -m pytest"
