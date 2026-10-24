@@ -1,6 +1,6 @@
 # Code Story — Build Plan, Rules, and Verification (`0.1.0`)
 
-**Current Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off).
+**Current Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off). Phase 2 implemented. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `8 passed` in `tests/test_phase2_review.py`; full suite `15 passed, 1 skipped` (the Phase 1 symlink skip). Phase 2 has not run in CI yet.
 
 Build and verify one phase at a time. Do not advance to the next deterministic phase until the current phase's gate is closed.
 
@@ -108,6 +108,8 @@ Build and verify one phase at a time. Do not advance to the next deterministic p
 
 ## Phase 2 — Retrieval, per-file drift detection, and tests
 
+**Status:** Phase 2 implemented. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `8 passed` in `tests/test_phase2_review.py`; full suite `15 passed, 1 skipped` (the Phase 1 symlink skip). Phase 2 has not run in CI yet.
+
 **Goal:** Make `list_changes` and `get_change` retrieve entries reliably, tolerate hand-edited or truncated logs, and report accurate per-file drift states.
 
 ### Work
@@ -129,6 +131,16 @@ Build and verify one phase at a time. Do not advance to the next deterministic p
    - Test case-insensitive `entry_id` header parsing and lookup in `get_change` (including lowercase hex IDs in the file or query).
    - Test all five per-file drift states (`unchanged`, `file_modified_excerpt_intact` with shifted lines, `excerpt_modified_or_removed`, `file_modified_no_excerpt` on secondary files, and `file_missing`).
    - Test parser recovery when `.ai-code-log.md` contains a hand-edited corrupted middle entry or a truncated trailing entry.
+   - Tests in `tests/test_phase2_review.py` (all PASSED locally on Python 3.11.16 and 3.14.7):
+     - [x] `test_list_changes_order_and_limit`: newest-first order, `limit` 1–50 bounds, structured `VALIDATION_ERROR` from the tool.
+     - [x] `test_missing_and_empty_log`: missing, empty, and entry-less logs; malformed `entry_id` queries.
+     - [x] `test_case_insensitive_entry_ids`: lowercase queries and hand-lowercased headers both resolve.
+     - [x] `test_drift_unchanged_and_excerpt_intact_with_shifted_lines`: `unchanged`, then `file_modified_excerpt_intact` with the shifted span; MCP tool output.
+     - [x] `test_drift_removed_secondary_and_missing`: `excerpt_modified_or_removed`, `file_modified_no_excerpt`, `file_missing` in one multi-file entry.
+     - [x] `test_fence_aware_parser_ignores_headers_inside_code`: a `## CS-...` line inside a logged code block is not an entry.
+     - [x] `test_recovery_from_corrupted_middle_entry`: unclosed fence and damaged header line are flagged; neighbours parse normally.
+     - [x] `test_recovery_from_truncated_trailing_entry`: truncated tail is flagged, keeps whole-file drift, and later appends parse cleanly.
+4. **Known parser limitation:** if a logged code block itself contains a full entry header followed by a `**Recorded:**` line *and* an earlier entry has an unclosed fence, recovery treats that header as real. Excerpts of `.ai-code-log.md` itself are the realistic trigger.
 
 **Done when:** `uv run pytest tests/test_phase2_review.py` passes, and a developer can list recent IDs, fetch an entry case-insensitively, recover cleanly around a corrupted block, and observe accurate five-state per-file drift results after editing or removing source files.
 

@@ -33,7 +33,7 @@ If the response includes `warnings` about a possible credential, redact the valu
 
 When asked to review entry `CS-...`:
 
-1. Call `get_change` and read any drift warnings.
+1. Call `get_change` and read each file's drift state. `file_modified_excerpt_intact` gives the excerpt's new `current_span`; `excerpt_modified_or_removed` or `file_missing` usually means the logged code is gone, so check whether the concern still applies. If the entry is `malformed`, trust the live code over the log text. Drift shows where to look, not whether a bug exists.
 2. Read the live source on disk; the log is history, not the current code.
 3. Confirm the suspected issue actually exists before editing. If it does not (false alarm, already fixed, code replaced or file removed), explain why and make no edit and no new entry.
 4. If you fix a confirmed issue, run the relevant checks, then call `record_change` for the fix and mention the original entry ID in `reason`.

@@ -4,12 +4,8 @@ from __future__ import annotations
 
 from mcp.server.mcpserver import MCPServer
 
-from code_story.log import (
-    CodeStoryError,
-    get_change_entry,
-    list_change_entries,
-    record_change_entry,
-)
+from code_story.log import CodeStoryError, record_change_entry
+from code_story.review import get_change_entry, list_change_entries
 
 mcp = MCPServer("code-story")
 
@@ -58,15 +54,25 @@ def record_change(
 
 
 def list_changes(project_root: str, limit: int = 10) -> dict[str, object]:
-    """List recent Code Story entry IDs and titles, newest first (limit 1-50)."""
+    """List recent Code Story entry IDs and titles, newest first (limit 1-50).
+
+    Damaged entries are still listed with malformed=true, and warnings explain
+    what is wrong with them.
+    """
     try:
-        return {"ok": True, "entries": list_change_entries(project_root, limit)}
+        return {"ok": True, **list_change_entries(project_root, limit)}
     except CodeStoryError as exc:
         return _error(exc)
 
 
 def get_change(project_root: str, entry_id: str) -> dict[str, object]:
-    """Fetch one Code Story entry, warning if a recorded file changed or is missing."""
+    """Fetch one Code Story entry by ID (case-insensitive) with per-file drift.
+
+    Each recorded file gets a drift state: unchanged, file_modified_excerpt_intact
+    (with the excerpt's current line span), excerpt_modified_or_removed,
+    file_modified_no_excerpt, or file_missing. Drift states show where to
+    inspect the live code; they do not say whether a bug is present.
+    """
     try:
         return {"ok": True, **get_change_entry(project_root, entry_id)}
     except CodeStoryError as exc:

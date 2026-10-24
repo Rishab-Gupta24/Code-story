@@ -5,10 +5,9 @@ from code_story.log import (
     CodeStoryValidationError,
     LockTimeoutError,
     RecordResult,
-    get_change_entry,
-    list_change_entries,
     record_change_entry,
 )
+from code_story.review import get_change_entry, list_change_entries, parse_log
 
 __version__ = "0.1.0"
 
@@ -19,5 +18,6 @@ __all__ = [
     "RecordResult",
     "get_change_entry",
     "list_change_entries",
+    "parse_log",
     "record_change_entry",
 ]

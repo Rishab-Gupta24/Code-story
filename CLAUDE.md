@@ -4,10 +4,11 @@ Code Story is a stdio MCP server (Python 3.11+, `uv`) that lets a coding assista
 
 ## Layout
 
-- `src/code_story/log.py`: validation, excerpt matching, secret scanning, fencing, locking (`record_change_entry`), plus basic `list_change_entries` / `get_change_entry`.
+- `src/code_story/log.py`: validation, excerpt matching, secret scanning, fencing, locking (`record_change_entry`).
+- `src/code_story/review.py`: fence-aware parser with recovery (`parse_log`), five-state drift, `list_change_entries` / `get_change_entry`.
 - `src/code_story/server.py`: MCP tools `record_change`, `list_changes`, `get_change` (wraps errors as `{"ok": false, "error": <code>}`).
 - `skills/code-story/SKILL.md`: assistant-facing instructions for when and how to log.
-- `tests/test_phase1_log.py`: Phase 1 suite. CI: `.github/workflows/tests.yml` (Python 3.11 and 3.14 on Ubuntu).
+- `tests/test_phase1_log.py`, `tests/test_phase2_review.py`: Phase 1 and 2 suites. CI: `.github/workflows/tests.yml` (Python 3.11 and 3.14 on Ubuntu).
 
 ## Commands
 

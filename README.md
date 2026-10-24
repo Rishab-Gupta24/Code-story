@@ -15,8 +15,15 @@ Code Story helps a coding assistant explain meaningful changes as it works. It w
   - Scans inputs for common secret patterns: hard-rejects high-confidence tokens (`sk-`, `AKIA`/`ASIA`, `gh[pousr]_`, `xox[baprs]-`, `-----BEGIN ... PRIVATE KEY-----`) and returns a non-blocking warning on generic `password = "..."` or `api_key = "..."` assignments. Pattern checks reduce accidental leaks of common token formats but cannot catch every secret.
   - Chooses an outer Markdown code fence longer than any backtick run inside `code_excerpt` and ensures clean entry separation even if `.ai-code-log.md` was hand-edited without a trailing newline.
   - Serializes writes with a 15-second cross-process lock (`.ai-code-log.md.lock`), returning `LOCK_TIMEOUT` with no write if the wait expires.
-- **Basic retrieval (`list_changes`, `get_change`):** implemented, not yet covered by automated tests (Phase 2). `get_change` warns when a recorded file's whole-file hash changed or the file is missing.
-- **Automated test status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off).
+- **Retrieval and review (`list_changes`, `get_change`):**
+  - `list_changes` returns entries newest first (`limit` 1–50) and handles a missing or empty log.
+  - Entry IDs match case-insensitively, in the query and in hand-edited headers.
+  - The parser tracks code fences, so a `## CS-...` line inside a logged code block is not mistaken for an entry.
+  - Hand-edited or truncated entries are kept and flagged `malformed` with a warning saying what is wrong; the entries around them still parse. The parser recovers from an unclosed fence at the next header followed by a `**Recorded:**` line.
+  - `get_change` reports a per-file drift state (see below).
+- **Automated test status:**
+  - Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off).
+  - Phase 2 implemented. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `8 passed` in `tests/test_phase2_review.py`; full suite `15 passed, 1 skipped` (the Phase 1 symlink skip). Phase 2 has not run in CI yet.
 
 ## Example entry
 
@@ -66,17 +73,27 @@ Ask your assistant:
 
 The assistant retrieves the entry via `get_change`, checks the recorded source fingerprint for drift, inspects the live source code on disk, and verifies whether the suspected issue actually exists before editing anything. If it makes a fix, it appends a separate entry so the history stays readable.
 
-### Current drift behavior (`0.1.0`)
+### Drift states
 
-At logging time, `record_change` stores each listed file's whole-file SHA-256 hash (plus the matched excerpt's line span and excerpt SHA-256). When `get_change` runs today, it recomputes the **whole-file SHA-256 hash** and warns whenever a recorded source file has changed or been removed since logging. This whole-file check is a signal about where to look; five-state excerpt-level drift reporting is scheduled for Phase 2.
+At logging time, `record_change` stores each listed file's whole-file SHA-256 hash, plus the matched excerpt's line span and excerpt SHA-256 for files that contain the excerpt. `get_change` compares those against the files on disk and returns one state per file:
+
+| State | Meaning |
+| --- | --- |
+| `unchanged` | The whole file is identical to when the entry was recorded. |
+| `file_modified_excerpt_intact` | The file changed, but the logged excerpt is still there; `current_span` gives its new line range. |
+| `excerpt_modified_or_removed` | The file changed and the logged excerpt is no longer in it. |
+| `file_modified_no_excerpt` | A secondary file (no excerpt tracked) changed. Also used when the entry is damaged and its excerpt cannot be read. |
+| `file_missing` | The file no longer exists inside `project_root`. |
+
+Drift states show where to inspect the live code; they do not say whether a bug is present.
 
 ## MCP tools
 
 | Tool | Inputs | Output |
 | --- | --- | --- |
 | `record_change` | `project_root`, `summary`, `explanation`, `reason`, `files`, `code_excerpt`, `checks`, `review_question`, optional `code_language` | Validates inputs, verifies excerpt presence in source, appends one entry to `.ai-code-log.md`, and returns its ID, log path, and any non-blocking warnings. |
-| `list_changes` | `project_root`, optional `limit` (1–50) | Recent entry IDs and titles. |
-| `get_change` | `project_root`, `entry_id` | Full entry, with a warning if any recorded source file changed or disappeared. |
+| `list_changes` | `project_root`, optional `limit` (1–50) | Recent entry IDs, titles, timestamps, and a `malformed` flag, newest first, plus parse warnings. |
+| `get_change` | `project_root`, `entry_id` (case-insensitive) | Full entry text, per-file drift states with recorded and current line spans, and warnings. |
 
 `project_root` is the absolute path to the project being edited. File paths supplied to `record_change` are relative to that root and may not escape it.
 
@@ -130,8 +147,6 @@ Log behavior changes, new logic, bug fixes, important data-flow changes, and non
 
 The capabilities below are scheduled for upcoming phases in [`tasks.md`](./tasks.md) and will move to **What works** only after each phase's verification gate passes:
 
-- **Parser recovery for hand-edited or truncated logs (Phase 2):** Isolate malformed or truncated middle/trailing entries during `list_changes` and `get_change` so manual edits to `.ai-code-log.md` never break retrieval, and enforce case-insensitive `entry_id` lookup with automated tests.
-- **Per-file five-state drift detection in `get_change` (Phase 2):** Distinguish `unchanged`, `file_modified_excerpt_intact` (with updated line span), `excerpt_modified_or_removed`, `file_modified_no_excerpt` (for secondary files in multi-file entries that did not contain the excerpt), and `file_missing`.
 - **Codex packaging (Phase 3 or 6):** Local marketplace catalog and plugin manifest for installing Code Story in Codex.
 - **Live client smoke tests & behavioral evaluations (Phases 3–6):** End-to-end client verification, multi-run logging/review evaluations on `eval/fixture_app/`, concurrency/scale benchmarks, and optional post-Phase 6 exploration (second-pass reviewer, diff-capture hooks).
 

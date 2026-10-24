@@ -1,9 +1,8 @@
 """Validated, append-only logging to ``<project_root>/.ai-code-log.md``.
 
-Phase 1 covers ``record_change_entry`` (validation, excerpt verification,
-secret scanning, fencing, locking). ``list_change_entries`` and
-``get_change_entry`` are basic scaffolding; fence-aware parsing, recovery and
-five-state drift detection arrive in Phase 2.
+``record_change_entry`` validates inputs, verifies the excerpt against the
+source on disk, scans for secrets, and appends one entry under a file lock.
+Reading the log back lives in ``code_story.review``.
 """
 
 from __future__ import annotations
@@ -53,8 +52,6 @@ _REQUIRED_TEXT_FIELDS = (
 )
 
 _CODE_LANGUAGE_RE = re.compile(r"^[A-Za-z0-9_+#.-]*$")
-_HEADER_RE = re.compile(r"^## (CS-\d{8}-[0-9A-F]{12}) \| (.+)$", re.MULTILINE)
-_FINGERPRINT_RE = re.compile(r"^- `([^`]+)`: `([0-9a-f]{64})`", re.MULTILINE)
 
 
 class CodeStoryError(Exception):
@@ -372,48 +369,3 @@ def _read_log(root: Path, lock_timeout: float) -> str:
         raise LockTimeoutError(
             f"Timed out after {lock_timeout:g}s waiting for {LOCK_FILENAME}."
         ) from exc
-
-
-def _split_entries(text: str) -> list[tuple[str, str, str]]:
-    """Return (entry_id, title, body) tuples in file order (basic, not fence-aware)."""
-    matches = list(_HEADER_RE.finditer(text))
-    entries = []
-    for i, match in enumerate(matches):
-        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-        entries.append((match.group(1), match.group(2), text[match.start() : end].rstrip() + "\n"))
-    return entries
-
-
-def list_change_entries(
-    project_root: str, limit: int = 10, *, lock_timeout: float = LOCK_TIMEOUT_SECONDS
-) -> list[dict[str, str]]:
-    """Most recent entries first."""
-    root = _validate_root(project_root)
-    if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 50:
-        raise CodeStoryValidationError("limit must be an integer from 1 to 50.")
-    entries = _split_entries(_read_log(root, lock_timeout))
-    return [{"entry_id": eid, "title": title} for eid, title, _ in reversed(entries)][:limit]
-
-
-def get_change_entry(
-    project_root: str, entry_id: str, *, lock_timeout: float = LOCK_TIMEOUT_SECONDS
-) -> dict[str, object]:
-    """Full entry text plus whole-file drift warnings."""
-    root = _validate_root(project_root)
-    if not isinstance(entry_id, str) or not entry_id.strip():
-        raise CodeStoryValidationError("entry_id is required.")
-    wanted = entry_id.strip()
-    for eid, title, body in _split_entries(_read_log(root, lock_timeout)):
-        if eid != wanted:
-            continue
-        warnings = []
-        for path, recorded_sha in _FINGERPRINT_RE.findall(body):
-            current = (root / path).resolve()
-            if not current.is_relative_to(root) or not current.is_file():
-                warnings.append(f"`{path}` is missing since this entry was recorded.")
-            elif _sha256(current.read_bytes()) != recorded_sha:
-                warnings.append(
-                    f"`{path}` changed since this entry was recorded; inspect the live code."
-                )
-        return {"entry_id": eid, "title": title, "entry": body, "warnings": warnings}
-    raise CodeStoryValidationError(f"No entry found with ID {wanted!r}.")
