@@ -1,6 +1,6 @@
 # Code Story — Build Plan, Rules, and Verification (`0.1.0`)
 
-**Current Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off). Phase 2 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): full suite `16 passed` on both jobs, including all 8 tests in `tests/test_phase2_review.py`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `15 passed, 1 skipped` (the Phase 1 symlink skip). Phase 3 complete; gate closed: a live Claude Code 2.1.308 session (`claude-opus-5-5`) called all three tools without errors (see Phase 3 results). Phase 4 in progress: Step 4A met every threshold (11/12 meaningful logged, 14/15 with 3 T20 reruns; 9/9 skips; 0 fabricated checks); Step 4B not started.
+**Current Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off). Phase 2 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): full suite `16 passed` on both jobs, including all 8 tests in `tests/test_phase2_review.py`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `15 passed, 1 skipped` (the Phase 1 symlink skip). Phase 3 complete; gate closed: a live Claude Code 2.1.308 session (`claude-opus-5-5`) called all three tools without errors (see Phase 3 results). Phase 4 complete; gate closed: meaningful changes logged 60/63 (95.2%), routine and unfinished work skipped 27/27, 0 fabricated checks in 63 entries (see Phase 4 results). Phase 5 not started.
 
 Build and verify one phase at a time. Do not advance to the next deterministic phase until the current phase's gate is closed.
 
@@ -227,6 +227,17 @@ Once Step 4A is stable across 3+ runs per scenario, expand toward the full 21-sc
 - **No fabricated checks:** 11/11 entries (100%). Every claimed test count matched a rerun, and both logged T20 entries said the retry and failure paths were not tested.
 - **The miss:** T20 run 2 made a correct change but never loaded the skill or called `record_change`. The cause is unknown from one run.
 - **T20 reruns (runs 4–6, fresh copies):** all 3 logged one focused entry with honest partial checks, so T20 is 5/6 and the miss did not repeat. Counting the reruns, meaningful changes were logged 14/15 times (93.3%). Step 4A is stable enough to expand to Step 4B.
+
+### Step 4B results and Phase 4 gate (2026-10-24)
+
+**Status:** Phase 4 complete; gate closed. All three gates pass across Step 4A and Step 4B (30 tasks, 3 runs each, `claude-opus-5-5`, Claude Code 2.1.308). Per-run scoring is in [`eval/results/step4b-2026-10-24.md`](./eval/results/step4b-2026-10-24.md).
+
+- **Step 4B:** meaningful changes logged 49/51 (96.1%), skips 18/18 (100%), no fabricated checks in 49 entries. All 8 no-test entries (T17–T19) said no checks were run. All 3 T21 entries said the new function itself was not run.
+- **Phase 4 totals:** meaningful changes 60/63 (95.2%), or 63/66 with the T20 reruns; skips 27/27 (100%); fabricated checks 0 in 63 entries.
+- **Misses:**
+  - T20 run 2 and T12 run 3 never loaded the skill.
+  - T18 run 2 chose not to log, reading "I only want the file edit" as "don't log". The skill could say that limits on tests or scope don't mean "skip the log".
+- **Not covered by the bank:** T29 run 1 got a second user message and then implemented a full feature without logging it. Logging after a back-and-forth is untested.
 
 ---
 

@@ -4,6 +4,9 @@
 # scoring oracle and must never be copied into a run folder: each run uses a
 # copy of eval/fixture_app/ outside this repository (see tasks.md, Phase 4).
 #
+# T21 says "an at sign" rather than quoting the character, because the session
+# launcher rewrites a literal at sign in prompts to a fullwidth one (U+FF20).
+#
 # Test commands use `uv run python -m pytest` rather than `uv run pytest`
 # because Windows Application Control can block the generated pytest.exe.
 #
@@ -196,8 +199,8 @@ prompts:
     difficulty: intermediate
     prompt: >
       Add a `bulk_export_active_users(users: list[User], db_conn: Any) -> int`
-      function in `src/fixture_app/reporting.py` that filters `users` to those with
-      an `"@"` in their email and inserts `(user_id, email, role)` into a
+      function in `src/fixture_app/reporting.py` that filters `users` to those whose
+      email contains an at sign and inserts `(user_id, email, role)` into a
       `warehouse_users` table via `db_conn.cursor()`, returning the count of exported
       users. Since we have no live warehouse database configured, only run
       `uv run python -m pytest tests/test_baseline.py` to make sure existing imports
