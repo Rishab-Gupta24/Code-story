@@ -238,6 +238,7 @@ Once Step 4A is stable across 3+ runs per scenario, expand toward the full 21-sc
   - T20 run 2 and T12 run 3 never loaded the skill.
   - T18 run 2 chose not to log, reading "I only want the file edit" as "don't log". The skill could say that limits on tests or scope don't mean "skip the log".
 - **Not covered by the bank:** T29 run 1 got a second user message and then implemented a full feature without logging it. Logging after a back-and-forth is untested.
+- **Skill updated after Phase 4 (2026-10-24):** `skills/code-story/SKILL.md` now says that limits on the task ("only the file edit", "don't run tests") are not limits on logging. It also says to check again on every turn, including after a follow-up message, and to log any completed meaningful change before the final reply. The skill's description names those cases too. The Phase 4 numbers above were measured with the earlier skill. This change has not been measured yet; rerunning T18 and a follow-up-turn case would show whether it helps.
 
 ---
 

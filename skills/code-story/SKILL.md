@@ -1,6 +1,6 @@
 ---
 name: code-story
-description: Log a focused, plain-language explanation of each meaningful completed code change to .ai-code-log.md with the Code Story MCP tools, and review logged entries by ID. Use after finishing a behavior change, new logic, bug fix, data-flow change or non-obvious refactor, or when asked to review a Code Story entry (CS-...).
+description: Log a focused, plain-language explanation of each meaningful completed code change to .ai-code-log.md with the Code Story MCP tools, and review logged entries by ID. Use after finishing a behavior change, new logic, bug fix, data-flow change or non-obvious refactor (including when the user said not to run tests, asked for "only the edit", or the change was finished after a follow-up message), or when asked to review a Code Story entry (CS-...).
 ---
 
 # Code Story
@@ -17,6 +17,13 @@ Do **not** log:
 
 - formatting, import sorting, comments or docstrings only, generated files, lockfile or dependency churn, trivial renames
 - unfinished work: stubs, code that does not run yet, exploration you reverted, or a change paused on a question to the user
+
+Logging is part of finishing a meaningful change, not part of the edit the user asked for:
+
+- **Limits on the task are not limits on logging.** "Only the file edit", "just make the change", "don't run tests" or "skip verification" limit what you edit and run. Still log the change, and say in `checks` that nothing was run.
+- **Check again on every turn.** A change paused on a question becomes loggable once the user answers and you finish it. Log it in the turn where you finish it.
+- **Before your final reply,** if you completed a meaningful change in this turn and haven't called `record_change` for it, call it now.
+- Skip logging a meaningful change only when the user explicitly asks you not to log it or not to use Code Story.
 
 ## How to log
 
