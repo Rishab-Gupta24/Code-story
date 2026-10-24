@@ -24,6 +24,7 @@ Code Story helps a coding assistant explain meaningful changes as it works. It w
 - **Automated test status:**
   - Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off).
   - Phase 2 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): full suite `16 passed` on both jobs, including all 8 tests in `tests/test_phase2_review.py`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `15 passed, 1 skipped` (the Phase 1 symlink skip).
+  - Phase 3 complete; gate closed. A live Claude Code session called `record_change`, `list_changes`, and `get_change` over stdio with no errors (see [Compatibility](#compatibility)).
 
 ## Example entry
 
@@ -128,9 +129,17 @@ claude mcp add --scope project code-story -- uv run --directory /absolute/path/t
 
 *(Use `--scope user` if you installed the skill in `~/.claude/skills/`.)*
 
+On Windows machines where Application Control blocks the generated `code-story.exe` launcher, register the module form instead. This is the command used in the Phase 3 smoke test:
+
+```shell
+claude mcp add --scope project code-story -- uv run --directory C:/absolute/path/to/code-story python -m code_story.server
+```
+
+Claude Code asks you to approve a project-scoped server from `.mcp.json` the first time it starts in that project.
+
 ### Codex
 
-Codex packaging (a local marketplace catalog and plugin manifest) is **not in the repository yet**. It will be added and verified when Codex is installed in Phase 3 or Phase 6.
+Codex packaging (a local marketplace catalog and plugin manifest) is **not in the repository yet**. It will be added and verified when Codex is installed in Phase 6.
 
 ## Choosing what to log
 
@@ -147,9 +156,15 @@ Log behavior changes, new logic, bug fixes, important data-flow changes, and non
 
 The capabilities below are scheduled for upcoming phases in [`tasks.md`](./tasks.md) and will move to **What works** only after each phase's verification gate passes:
 
-- **Codex packaging (Phase 3 or 6):** Local marketplace catalog and plugin manifest for installing Code Story in Codex.
-- **Live client smoke tests & behavioral evaluations (Phases 3–6):** End-to-end client verification, multi-run logging/review evaluations on `eval/fixture_app/`, concurrency/scale benchmarks, and optional post-Phase 6 exploration (second-pass reviewer, diff-capture hooks).
+- **Codex packaging (Phase 6):** Local marketplace catalog and plugin manifest for installing Code Story in Codex.
+- **Behavioral evaluations and hardening (Phases 4–6):** Multi-run logging/review evaluations on `eval/fixture_app/`, a second-client smoke test, concurrency/scale benchmarks, and optional post-Phase 6 exploration (second-pass reviewer, diff-capture hooks).
 
 ## Compatibility
 
-The package includes a skill (`skills/code-story/SKILL.md`) and a stdio MCP server for Claude Code. It has **not yet been tested** with specific Codex or Claude Code versions; exact client and runtime versions will be recorded in Phase 3 and Phase 6. See `LICENSE` for the MIT license.
+The package includes a skill (`skills/code-story/SKILL.md`) and a stdio MCP server for Claude Code.
+
+| Client | Version | Model | OS / runtime | Result |
+| --- | --- | --- | --- | --- |
+| Claude Code (bundled with the Claude desktop app) | 2.1.308 | `claude-opus-5-5` (medium effort) | Windows 11 build 26200, Python 3.14.7, uv 0.12.17 | Phase 3 smoke test passed: one session called `record_change`, `list_changes`, and `get_change` with no errors. |
+
+This is one smoke test in one session, not a behavioral evaluation; Phase 4 measures logging behavior across repeated runs. Codex is not tested yet (Phase 6). See `LICENSE` for the MIT license.

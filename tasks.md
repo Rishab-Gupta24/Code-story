@@ -1,6 +1,6 @@
 # Code Story — Build Plan, Rules, and Verification (`0.1.0`)
 
-**Current Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off). Phase 2 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): full suite `16 passed` on both jobs, including all 8 tests in `tests/test_phase2_review.py`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `15 passed, 1 skipped` (the Phase 1 symlink skip).
+**Current Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off). Phase 2 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): full suite `16 passed` on both jobs, including all 8 tests in `tests/test_phase2_review.py`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `15 passed, 1 skipped` (the Phase 1 symlink skip). Phase 3 complete; gate closed: a live Claude Code 2.1.308 session (`claude-opus-5-5`) called all three tools without errors (see Phase 3 results).
 
 Build and verify one phase at a time. Do not advance to the next deterministic phase until the current phase's gate is closed.
 
@@ -162,6 +162,16 @@ Build and verify one phase at a time. Do not advance to the next deterministic p
    - Log the exact OS, Python version, `uv` version, client name, client version, and model ID used for the smoke test.
 
 **Done when:** The primary client invokes `record_change`, `list_changes`, and `get_change` over stdio without path, lock, or schema errors.
+
+### Phase 3 results (2026-10-24)
+
+**Status:** Phase 3 complete; gate closed.
+
+- **Environment:** Windows 11 (build 10.0.26200), Python 3.14.7 (server venv), uv 0.12.17, Claude Code 2.1.308 (the build bundled with the Claude desktop app), model `claude-opus-5-5` at medium effort, auto permission mode.
+- **Install:** scratch git repo `C:\Users\LAP\code-story-smoke` (`cart.py`, `test_cart.py`). Copied `skills/code-story/` to `.claude/skills/code-story/` and ran `claude mcp add --scope project code-story -- uv run --directory C:/Users/LAP/OneDrive/Desktop/code-story python -m code_story.server`. The module form was needed because Windows Application Control blocks the `code-story.exe` launcher on this machine. The server was approved for the project with `"enabledMcpjsonServers": ["code-story"]` in `.claude/settings.local.json`.
+- **Prompt 1** (no mention of Code Story): *"In `cart.py`, make `add_item` raise `ValueError` when quantity is less than 1, add a test for it in `test_cart.py`, and run the tests with `uv run --with pytest pytest -q`."* The session loaded the `code-story` skill on its own and called `mcp__code-story__record_change`, which wrote `CS-20261024-91742AD34487`. Checked by hand afterwards: the recorded span (lines 3–4) and both file SHA-256 values match the files on disk, the excerpt is the new guard, and the `checks` field matches a rerun (`2 passed`) and says negative and non-integer quantities were not tested. One caveat: the session brief told it to "follow the project's own setup in `.claude/` and `.mcp.json`", which may have nudged it toward the skill.
+- **Prompt 2:** *"List recent Code Story changes, then show me the full entry for the latest one."* The session called `mcp__code-story__list_changes`, then `mcp__code-story__get_change`, which returned the entry with both files `unchanged`.
+- **Errors:** none (no path, lock, or schema errors).
 
 ---
 
