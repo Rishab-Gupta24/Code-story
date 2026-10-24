@@ -23,7 +23,7 @@ Code Story helps a coding assistant explain meaningful changes as it works. It w
   - `get_change` reports a per-file drift state (see below).
 - **Automated test status:**
   - Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off).
-  - Phase 2 implemented. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `8 passed` in `tests/test_phase2_review.py`; full suite `15 passed, 1 skipped` (the Phase 1 symlink skip). Phase 2 has not run in CI yet.
+  - Phase 2 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): full suite `16 passed` on both jobs, including all 8 tests in `tests/test_phase2_review.py`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `15 passed, 1 skipped` (the Phase 1 symlink skip).
 
 ## Example entry
 

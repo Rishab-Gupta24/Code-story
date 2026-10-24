@@ -1,6 +1,6 @@
 # Code Story — Build Plan, Rules, and Verification (`0.1.0`)
 
-**Current Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off). Phase 2 implemented. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `8 passed` in `tests/test_phase2_review.py`; full suite `15 passed, 1 skipped` (the Phase 1 symlink skip). Phase 2 has not run in CI yet.
+**Current Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off). Phase 2 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): full suite `16 passed` on both jobs, including all 8 tests in `tests/test_phase2_review.py`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `15 passed, 1 skipped` (the Phase 1 symlink skip).
 
 Build and verify one phase at a time. Do not advance to the next deterministic phase until the current phase's gate is closed.
 
@@ -108,7 +108,7 @@ Build and verify one phase at a time. Do not advance to the next deterministic p
 
 ## Phase 2 — Retrieval, per-file drift detection, and tests
 
-**Status:** Phase 2 implemented. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `8 passed` in `tests/test_phase2_review.py`; full suite `15 passed, 1 skipped` (the Phase 1 symlink skip). Phase 2 has not run in CI yet.
+**Status:** Phase 2 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): full suite `16 passed` on both jobs, including all 8 tests in `tests/test_phase2_review.py`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `15 passed, 1 skipped` (the Phase 1 symlink skip).
 
 **Goal:** Make `list_changes` and `get_change` retrieve entries reliably, tolerate hand-edited or truncated logs, and report accurate per-file drift states.
 
@@ -131,7 +131,7 @@ Build and verify one phase at a time. Do not advance to the next deterministic p
    - Test case-insensitive `entry_id` header parsing and lookup in `get_change` (including lowercase hex IDs in the file or query).
    - Test all five per-file drift states (`unchanged`, `file_modified_excerpt_intact` with shifted lines, `excerpt_modified_or_removed`, `file_modified_no_excerpt` on secondary files, and `file_missing`).
    - Test parser recovery when `.ai-code-log.md` contains a hand-edited corrupted middle entry or a truncated trailing entry.
-   - Tests in `tests/test_phase2_review.py` (all PASSED locally on Python 3.11.16 and 3.14.7):
+   - Tests in `tests/test_phase2_review.py` (all PASSED in GitHub Actions on Python 3.11 and 3.14, and locally on Python 3.11.16 and 3.14.7):
      - [x] `test_list_changes_order_and_limit`: newest-first order, `limit` 1–50 bounds, structured `VALIDATION_ERROR` from the tool.
      - [x] `test_missing_and_empty_log`: missing, empty, and entry-less logs; malformed `entry_id` queries.
      - [x] `test_case_insensitive_entry_ids`: lowercase queries and hand-lowercased headers both resolve.
