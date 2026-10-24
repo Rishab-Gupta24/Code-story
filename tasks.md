@@ -1,6 +1,6 @@
 # Code Story — Build Plan, Rules, and Verification (`0.1.0`)
 
-**Current Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off). Phase 2 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): full suite `16 passed` on both jobs, including all 8 tests in `tests/test_phase2_review.py`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `15 passed, 1 skipped` (the Phase 1 symlink skip). Phase 3 complete; gate closed: a live Claude Code 2.1.308 session (`claude-opus-5-5`) called all three tools without errors (see Phase 3 results). Phase 4 in progress: Step 4A met every threshold (11/12 meaningful logged, 9/9 skips, 0 fabricated checks); Step 4B not started.
+**Current Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off). Phase 2 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): full suite `16 passed` on both jobs, including all 8 tests in `tests/test_phase2_review.py`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `15 passed, 1 skipped` (the Phase 1 symlink skip). Phase 3 complete; gate closed: a live Claude Code 2.1.308 session (`claude-opus-5-5`) called all three tools without errors (see Phase 3 results). Phase 4 in progress: Step 4A met every threshold (11/12 meaningful logged, 14/15 with 3 T20 reruns; 9/9 skips; 0 fabricated checks); Step 4B not started.
 
 Build and verify one phase at a time. Do not advance to the next deterministic phase until the current phase's gate is closed.
 
@@ -225,7 +225,8 @@ Once Step 4A is stable across 3+ runs per scenario, expand toward the full 21-sc
 - **Meaningful changes logged with 1 focused entry:** 11/12 (91.7%). T02 3/3, T04 3/3, T05 3/3, T20 2/3.
 - **Routine and unfinished work skipped:** 9/9 (100%). T22 3/3, T24 3/3, T27 3/3.
 - **No fabricated checks:** 11/11 entries (100%). Every claimed test count matched a rerun, and both logged T20 entries said the retry and failure paths were not tested.
-- **The miss:** T20 run 2 made a correct change but never loaded the skill or called `record_change`. The cause is unknown from one run. Before expanding to Step 4B, consider rerunning T20 (and other partial-check tasks) a few more times to see whether partial-check tasks trigger logging less reliably.
+- **The miss:** T20 run 2 made a correct change but never loaded the skill or called `record_change`. The cause is unknown from one run.
+- **T20 reruns (runs 4–6, fresh copies):** all 3 logged one focused entry with honest partial checks, so T20 is 5/6 and the miss did not repeat. Counting the reruns, meaningful changes were logged 14/15 times (93.3%). Step 4A is stable enough to expand to Step 4B.
 
 ---
 
