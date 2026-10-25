@@ -26,6 +26,7 @@ Code Story helps a coding assistant explain meaningful changes as it works. It w
   - Phase 2 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): full suite `16 passed` on both jobs, including all 8 tests in `tests/test_phase2_review.py`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `15 passed, 1 skipped` (the Phase 1 symlink skip).
   - Phase 3 complete; gate closed. A live Claude Code session called `record_change`, `list_changes`, and `get_change` over stdio with no errors (see [Compatibility](#compatibility)).
   - Phase 4 complete; gate closed. Across 30 evaluation tasks run 3 times each with `claude-opus-5-5` in Claude Code, the assistant logged meaningful changes with a focused entry 60/63 times (95.2%), skipped routine and unfinished edits 27/27 times, and claimed no checks it didn't run in any of 63 entries. One model and one client only; details in [`eval/results/`](./eval/results/).
+  - Phase 5 complete; gate closed. Asked to review a seeded entry by ID, the assistant fixed, tested and logged a follow-up for all 12 real-bug runs (R01–R04), and made no edit and no new entry in all 18 false-alarm, already-fixed, replaced-code and deleted-file runs (R05–R10). Same model and client as Phase 4; details in [`eval/results/`](./eval/results/).
 
 ## Example entry
 
@@ -158,7 +159,7 @@ Log behavior changes, new logic, bug fixes, important data-flow changes, and non
 The capabilities below are scheduled for upcoming phases in [`tasks.md`](./tasks.md) and will move to **What works** only after each phase's verification gate passes:
 
 - **Codex packaging (Phase 6):** Local marketplace catalog and plugin manifest for installing Code Story in Codex.
-- **Review-loop evaluation and hardening (Phases 5–6):** Multi-run review-and-fix evaluations on `eval/fixture_app/`, a second-client smoke test, concurrency/scale benchmarks, and optional post-Phase 6 exploration (second-pass reviewer, diff-capture hooks).
+- **Hardening and portability (Phase 6):** A second-client smoke test, concurrency/scale benchmarks, and optional post-Phase 6 exploration (second-pass reviewer, diff-capture hooks).
 
 ## Compatibility
 
