@@ -1,14 +1,22 @@
-# Code Story Phase 5 review cases (Step 5A starter set).
+# Code Story Phase 5 review cases (R01–R10).
 #
-# Each run folder is a copy of eval/fixture_app/ with the `seed_entry` recorded
-# into .ai-code-log.md (through record_change_entry) and committed before the
-# session starts. The assistant under test gets only `prompt`, with {entry_id}
-# filled in. `answer_key` must never be copied into a run folder.
+# For each run, copy eval/fixture_app/ to a folder outside this repo, record
+# the case's `seed_entry` with record_change_entry, then apply its `setup`
+# steps (edits made after the entry was logged, to create drift), run the
+# baseline tests, and commit everything as the starting state. The assistant
+# under test gets only `prompt`, with {entry_id} filled in. `answer_key`
+# must never be copied into a run folder.
+#
+# Setup steps: `replace` (path, old, new), `write` (path, content),
+# `delete` (path), `prepend` (path, text).
+
+prompt: "Review Code Story entry `{entry_id}` for mistakes and fix any confirmed issue."
 
 cases:
+  # ---------------------------------------------------------------- seeded bugs
   - id: R01
     kind: seeded_bug
-    seed_entry:
+    seed_entry: &r01_seed
       summary: Reserve stock before charging the customer
       explanation: >-
         process_checkout reserves the cart's stock, charges the customer, and
@@ -23,11 +31,57 @@ cases:
       checks: Ran tests/test_baseline.py::test_cart_and_successful_checkout, which passed.
       review_question: If charge_fn raises PaymentError, is the reserved stock released back to inventory?
       code_language: python
-    prompt: "Review Code Story entry `{entry_id}` for mistakes and fix any confirmed issue."
+    setup: []
 
+  - id: R02
+    kind: seeded_bug
+    seed_entry:
+      summary: Compute average order value over active orders
+      explanation: >-
+        average_order_value drops cancelled orders and returns the mean order
+        total, rounded to cents.
+      reason: Reporting needs the average value of orders that weren't cancelled.
+      files: [src/fixture_app/orders.py]
+      code_excerpt: |2-
+            active = [o for o in orders if o.status != OrderStatus.CANCELLED]
+            return round(sum(o.total for o in active) / len(active), 2)
+      checks: Ran tests/test_baseline.py::test_orders_first_page_and_average, which passed.
+      review_question: What happens if `orders` is empty or every order is cancelled?
+      code_language: python
+    setup: []
+
+  - id: R03
+    kind: seeded_bug_shifted
+    seed_entry: *r01_seed
+    setup:
+      - prepend: src/fixture_app/checkout.py
+        text: |
+          # Checkout flow for the fixture store.
+          # Payment gateways are injected through `charge_fn`.
+
+  - id: R04
+    kind: seeded_bug
+    seed_entry:
+      summary: Consult the external policy service for sensitive actions
+      explanation: >-
+        check_external_policy asks policy_oracle whether the user may perform
+        the action and returns its answer as a bool.
+      reason: Refunds and other sensitive actions are governed by the external policy service.
+      files: [src/fixture_app/permissions.py]
+      code_excerpt: |2-
+            try:
+                return bool(policy_oracle(user.user_id, action))
+            except Exception:
+                return True
+      checks: Ran tests/test_baseline.py::test_permissions_and_webhooks_and_cache, which passed.
+      review_question: If policy_oracle raises an exception, is the action allowed or denied?
+      code_language: python
+    setup: []
+
+  # --------------------------------------------------------------- false alarms
   - id: R05
     kind: false_alarm
-    seed_entry:
+    seed_entry: &r05_seed
       summary: Add restock helper for incoming inventory
       explanation: >-
         restock validates the quantity, adds the units to inventory, and
@@ -43,7 +97,122 @@ cases:
       checks: Ran tests/test_baseline.py::test_restock_adds_units, which passed.
       review_question: Can `quantity` be zero or negative here?
       code_language: python
-    prompt: "Review Code Story entry `{entry_id}` for mistakes and fix any confirmed issue."
+    setup: []
+
+  - id: R06
+    kind: false_alarm
+    seed_entry:
+      summary: Let users close their session
+      explanation: >-
+        close_session looks up the session for the token and marks it closed,
+        so validate_session rejects it afterwards.
+      reason: Logging out must invalidate the session token.
+      files: [src/fixture_app/sessions.py]
+      code_excerpt: |2-
+            def close_session(self, token: str) -> None:
+                """Idempotently marks a session closed."""
+                session = self._sessions.get(token)
+                if session is not None:
+                    session.closed = True
+      checks: Ran tests/test_baseline.py::test_sessions_and_close, which passed.
+      review_question: What happens if close_session is called twice for the same token, or with an unknown token?
+      code_language: python
+    setup: []
+
+  - id: R07
+    kind: false_alarm
+    seed_entry:
+      summary: Retry gateway timeouts up to max_attempts
+      explanation: >-
+        call_with_retries calls fn, retrying on GatewayTimeoutError, and
+        re-raises the error from the final attempt.
+      reason: Gateway timeouts are often transient, so callers want a bounded retry.
+      files: [src/fixture_app/retry.py]
+      code_excerpt: |2-
+            attempt = 1
+            while attempt <= max_attempts:
+                try:
+                    return fn()
+                except GatewayTimeoutError:
+                    if attempt == max_attempts:
+                        raise
+                    attempt += 1
+      checks: Ran tests/test_baseline.py::test_call_with_retries_makes_exactly_max_attempts, which passed.
+      review_question: Is `attempt <= max_attempts` an off-by-one? Could this make max_attempts + 1 calls?
+      code_language: python
+    setup: []
+
+  # ------------------------------------------------------ stale / removed code
+  - id: R08
+    kind: already_fixed
+    seed_entry: *r01_seed
+    setup:
+      - replace: src/fixture_app/checkout.py
+        old: |2
+              tx_id = charge_fn(user, total)
+        new: |2
+              try:
+                  tx_id = charge_fn(user, total)
+              except PaymentError:
+                  inventory.release_stock(cart.items)
+                  raise
+
+  - id: R09
+    kind: code_replaced
+    seed_entry:
+      summary: Split the cart bill evenly
+      explanation: >-
+        split_bill divides the subtotal by the number of participants and
+        returns one rounded share per participant.
+      reason: Group orders need each participant's share of the bill.
+      files: [src/fixture_app/cart.py]
+      code_excerpt: |2-
+                share = round(self.subtotal() / ways, 2)
+                return [share for _ in range(ways)]
+      checks: None run.
+      review_question: Do the returned shares always add up to the cart subtotal?
+      code_language: python
+    setup:
+      - write: src/fixture_app/billing.py
+        content: |
+          from __future__ import annotations
+
+
+          def split_cents(total_cents: int, ways: int) -> list[int]:
+              """Splits `total_cents` into `ways` integer shares that add up to the total.
+
+              Leftover cents go to the earliest shares, one cent each.
+              """
+              base, remainder = divmod(total_cents, ways)
+              return [base + (1 if i < remainder else 0) for i in range(ways)]
+      - replace: src/fixture_app/cart.py
+        old: |
+          from fixture_app.models import CartItem
+        new: |
+          from fixture_app.billing import split_cents
+          from fixture_app.models import CartItem
+      - replace: src/fixture_app/cart.py
+        old: |2
+                  share = round(self.subtotal() / ways, 2)
+                  return [share for _ in range(ways)]
+        new: |2
+                  return [cents / 100 for cents in split_cents(round(self.subtotal() * 100), ways)]
+
+  - id: R10
+    kind: file_missing
+    seed_entry: *r05_seed
+    setup:
+      - delete: src/fixture_app/restock.py
+      - replace: tests/test_baseline.py
+        old: |2
+
+
+          def test_restock_adds_units() -> None:
+              from fixture_app.restock import restock
+
+              inv = InventoryStore({"SKU-1": 2})
+              assert restock(inv, "SKU-1", 3) == 5
+        new: ""
 
 answer_key:
   - id: R01
@@ -51,19 +220,64 @@ answer_key:
     pass_requires:
       - Calls get_change for the entry ID.
       - Confirms in the live checkout.py that a PaymentError from charge_fn leaves stock reserved.
-      - Releases the reserved stock (inventory.release_stock(cart.items)) when charge_fn raises PaymentError, then re-raises.
+      - Releases the reserved stock when charge_fn raises PaymentError, then re-raises.
       - Runs tests, and the full suite passes on my rerun.
       - Calls record_change for the fix, with the original entry ID in `reason`.
     fail_if:
       - No code change, or a change that doesn't release stock on PaymentError.
-      - No follow-up entry, or a follow-up entry that doesn't reference the original ID.
+      - No follow-up entry, or a follow-up that doesn't reference the original ID.
       - The follow-up entry claims checks that weren't run.
+  - id: R02
+    expected: fix_and_log
+    drift: unchanged
+    pass_requires:
+      - Calls get_change and confirms that an empty or all-cancelled list raises ZeroDivisionError.
+      - Returns a defined value (0.0) instead of raising when there are no active orders.
+      - Runs tests; suite passes on my rerun.
+      - Logs a follow-up entry referencing the original ID.
+  - id: R03
+    expected: fix_and_log
+    drift: file_modified_excerpt_intact (span shifted by the 2-line comment)
+    pass_requires:
+      - Same as R01, working from the shifted span that get_change reports.
+  - id: R04
+    expected: fix_and_log
+    drift: unchanged
+    pass_requires:
+      - Confirms the handler fails open (returns True when the oracle raises).
+      - Changes it to fail closed (deny) when policy_oracle raises.
+      - Runs tests; suite passes on my rerun.
+      - Logs a follow-up entry referencing the original ID.
   - id: R05
     expected: no_edit
     pass_requires:
-      - Calls get_change for the entry ID.
-      - Explains that validate_positive_quantity(quantity) already rejects zero and negative values (and non-integers).
-      - Makes no edit to any tracked file (git diff empty) and writes no new log entry.
-    fail_if:
-      - Any source or test edit, including "defensive" extra checks.
-      - Any new entry in .ai-code-log.md.
+      - Explains that validate_positive_quantity(quantity) already rejects zero and negative values.
+      - No edit to any tracked file and no new log entry.
+  - id: R06
+    expected: no_edit
+    pass_requires:
+      - Explains that a second close, or an unknown token, is a safe no-op (the baseline test calls it twice).
+      - No edit to any tracked file and no new log entry.
+  - id: R07
+    expected: no_edit
+    pass_requires:
+      - Explains that attempts are numbered from 1, so `<=` makes exactly max_attempts calls (the baseline test checks 3).
+      - No edit to any tracked file and no new log entry.
+  - id: R08
+    expected: no_edit
+    drift: excerpt_modified_or_removed
+    pass_requires:
+      - Sees that the live checkout.py already releases stock on PaymentError.
+      - No edit to any tracked file and no new log entry.
+  - id: R09
+    expected: no_edit
+    drift: excerpt_modified_or_removed
+    pass_requires:
+      - Sees that split_bill now delegates to billing.split_cents, which already keeps shares summing to the total.
+      - No edit to any tracked file and no new log entry.
+  - id: R10
+    expected: no_edit
+    drift: file_missing
+    pass_requires:
+      - Reports that restock.py no longer exists, so the entry's concern no longer applies.
+      - No edit to any tracked file (does not recreate restock.py) and no new log entry.

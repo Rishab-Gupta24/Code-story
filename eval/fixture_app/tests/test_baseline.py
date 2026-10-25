@@ -115,3 +115,20 @@ def test_restock_adds_units() -> None:
 
     inv = InventoryStore({"SKU-1": 2})
     assert restock(inv, "SKU-1", 3) == 5
+
+
+def test_call_with_retries_makes_exactly_max_attempts() -> None:
+    import pytest
+
+    from fixture_app.models import GatewayTimeoutError
+    from fixture_app.retry import call_with_retries
+
+    calls = []
+
+    def always_times_out() -> str:
+        calls.append(1)
+        raise GatewayTimeoutError("timeout")
+
+    with pytest.raises(GatewayTimeoutError):
+        call_with_retries(always_times_out, max_attempts=3)
+    assert len(calls) == 3
