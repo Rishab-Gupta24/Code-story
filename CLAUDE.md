@@ -8,7 +8,7 @@ Code Story is a stdio MCP server (Python 3.11+, `uv`) that lets a coding assista
 - `src/code_story/review.py`: fence-aware parser with recovery (`parse_log`), five-state drift, `list_change_entries` / `get_change_entry`.
 - `src/code_story/server.py`: MCP tools `record_change`, `list_changes`, `get_change` (wraps errors as `{"ok": false, "error": <code>}`).
 - `skills/code-story/SKILL.md`: assistant-facing instructions for when and how to log.
-- `eval/fixture_app/`: Phase 4–5 fixture app (its own `pyproject.toml`; not part of this package's test run). `eval/tasks_bank.yaml`: task prompts plus answer key. Run evaluations only in a copy outside this repo, so the answer key and this file never reach the assistant under test.
+- `eval/fixture_app/`: Phase 4–5 fixture app (its own `pyproject.toml`; not part of this package's test run). `eval/tasks_bank.yaml` (Phase 4) and `eval/review_cases.yaml` (Phase 5): prompts plus answer keys; scored runs in `eval/results/`. Run evaluations only in a copy outside this repo, so the answer key and this file never reach the assistant under test.
 - `tests/test_phase1_log.py`, `tests/test_phase2_review.py`: Phase 1 and 2 suites. CI: `.github/workflows/tests.yml` (Python 3.11 and 3.14 on Ubuntu).
 
 ## Commands

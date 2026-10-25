@@ -1,6 +1,6 @@
 # Code Story — Build Plan, Rules, and Verification (`0.1.0`)
 
-**Current Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off). Phase 2 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): full suite `16 passed` on both jobs, including all 8 tests in `tests/test_phase2_review.py`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `15 passed, 1 skipped` (the Phase 1 symlink skip). Phase 3 complete; gate closed: a live Claude Code 2.1.308 session (`claude-opus-5-5`) called all three tools without errors (see Phase 3 results). Phase 4 complete; gate closed: meaningful changes logged 60/63 (95.2%), routine and unfinished work skipped 27/27, 0 fabricated checks in 63 entries (see Phase 4 results). Phase 5 not started.
+**Current Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off). Phase 2 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): full suite `16 passed` on both jobs, including all 8 tests in `tests/test_phase2_review.py`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `15 passed, 1 skipped` (the Phase 1 symlink skip). Phase 3 complete; gate closed: a live Claude Code 2.1.308 session (`claude-opus-5-5`) called all three tools without errors (see Phase 3 results). Phase 4 complete; gate closed: meaningful changes logged 60/63 (95.2%), routine and unfinished work skipped 27/27, 0 fabricated checks in 63 entries (see Phase 4 results). Phase 5 in progress: Step 5A passed (R01 3/3 fixed and logged, R05 3/3 no edits); Step 5B not started.
 
 Build and verify one phase at a time. Do not advance to the next deterministic phase until the current phase's gate is closed.
 
@@ -275,6 +275,15 @@ Use an isolated run folder copied from `eval/fixture_app/` (see Phase 4) and res
 **Done when (Phase 5 Gates across ≥3 runs per case):**
 - Seeded bugs (`R01–R04`) confirmed, fixed, tested, and logged as a follow-up entry: **≥90%** pass rate.
 - **No speculative code edits** on false alarms (`R05–R07`) or already-fixed/stale entries (`R08–R10`): **100%** required across all runs.
+
+### Step 5A results (2026-10-25)
+
+**Status:** Step 5A run (R01 and R05, 3 runs each, `claude-opus-5-5`, Claude Code 2.1.308, skill from `d3f2252`). Both cases passed every run. The Phase 5 gate stays open until Step 5B (R02–R04, R06–R10) runs. Seeds, prompt and answer key are in [`eval/review_cases.yaml`](./eval/review_cases.yaml); per-run scoring is in [`eval/results/step5a-2026-10-25.md`](./eval/results/step5a-2026-10-25.md).
+
+- **Fixture change:** `eval/fixture_app/src/fixture_app/restock.py` was added for R05. Its `restock()` calls `validate_positive_quantity()` on its first line. The baseline is now 7 passed, and all 35 Phase 4 bug probes still reproduce.
+- **R01 (seeded bug): 3/3.** Each run called `get_change` and confirmed the missing `release_stock()` in the live code. It added the `try/except PaymentError` release and re-raise, and the suite passed (7 passed, matching my rerun). Each logged a follow-up entry whose reason names the original entry ID.
+- **R05 (false alarm): 3/3.** Each run called `get_change`, explained that `validate_positive_quantity` already rejects zero and negative values, and left a clean tree with no new entry.
+- **No speculative edits:** all three R01 runs noticed the unrelated tax-before-discount bug and left it alone as out of scope.
 
 ---
 
