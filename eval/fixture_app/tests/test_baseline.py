@@ -108,3 +108,10 @@ def test_permissions_and_webhooks_and_cache() -> None:
 
     summary = summarize_daily_revenue([order])
     assert len(summary) == 1
+
+
+def test_restock_adds_units() -> None:
+    from fixture_app.restock import restock
+
+    inv = InventoryStore({"SKU-1": 2})
+    assert restock(inv, "SKU-1", 3) == 5

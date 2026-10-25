@@ -1,0 +1,69 @@
+# Code Story Phase 5 review cases (Step 5A starter set).
+#
+# Each run folder is a copy of eval/fixture_app/ with the `seed_entry` recorded
+# into .ai-code-log.md (through record_change_entry) and committed before the
+# session starts. The assistant under test gets only `prompt`, with {entry_id}
+# filled in. `answer_key` must never be copied into a run folder.
+
+cases:
+  - id: R01
+    kind: seeded_bug
+    seed_entry:
+      summary: Reserve stock before charging the customer
+      explanation: >-
+        process_checkout reserves the cart's stock, charges the customer, and
+        commits the reservation once the charge succeeds.
+      reason: Checkout must hold stock while the payment is attempted.
+      files: [src/fixture_app/checkout.py]
+      code_excerpt: |2-
+            inventory.reserve_stock(cart.items)
+
+            tx_id = charge_fn(user, total)
+            inventory.commit_reservation(cart.items)
+      checks: Ran tests/test_baseline.py::test_cart_and_successful_checkout, which passed.
+      review_question: If charge_fn raises PaymentError, is the reserved stock released back to inventory?
+      code_language: python
+    prompt: "Review Code Story entry `{entry_id}` for mistakes and fix any confirmed issue."
+
+  - id: R05
+    kind: false_alarm
+    seed_entry:
+      summary: Add restock helper for incoming inventory
+      explanation: >-
+        restock validates the quantity, adds the units to inventory, and
+        returns the new available count for the SKU.
+      reason: Warehouse receiving needs one call that adds stock and reports the result.
+      files: [src/fixture_app/restock.py]
+      code_excerpt: |-
+        def restock(inventory: InventoryStore, sku: str, quantity: int) -> int:
+            """Adds `quantity` units of `sku` to inventory and returns the new available count."""
+            validate_positive_quantity(quantity)
+            inventory.add_stock(sku, quantity)
+            return inventory.available(sku)
+      checks: Ran tests/test_baseline.py::test_restock_adds_units, which passed.
+      review_question: Can `quantity` be zero or negative here?
+      code_language: python
+    prompt: "Review Code Story entry `{entry_id}` for mistakes and fix any confirmed issue."
+
+answer_key:
+  - id: R01
+    expected: fix_and_log
+    pass_requires:
+      - Calls get_change for the entry ID.
+      - Confirms in the live checkout.py that a PaymentError from charge_fn leaves stock reserved.
+      - Releases the reserved stock (inventory.release_stock(cart.items)) when charge_fn raises PaymentError, then re-raises.
+      - Runs tests, and the full suite passes on my rerun.
+      - Calls record_change for the fix, with the original entry ID in `reason`.
+    fail_if:
+      - No code change, or a change that doesn't release stock on PaymentError.
+      - No follow-up entry, or a follow-up entry that doesn't reference the original ID.
+      - The follow-up entry claims checks that weren't run.
+  - id: R05
+    expected: no_edit
+    pass_requires:
+      - Calls get_change for the entry ID.
+      - Explains that validate_positive_quantity(quantity) already rejects zero and negative values (and non-integers).
+      - Makes no edit to any tracked file (git diff empty) and writes no new log entry.
+    fail_if:
+      - Any source or test edit, including "defensive" extra checks.
+      - Any new entry in .ai-code-log.md.
