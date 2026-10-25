@@ -28,7 +28,7 @@ Code Story helps a coding assistant explain meaningful changes as it works. It w
   - Phase 3 complete; gate closed. A live Claude Code session called `record_change`, `list_changes`, and `get_change` over stdio with no errors (see [Compatibility](#compatibility)).
   - Phase 4 complete; gate closed. Across 30 evaluation tasks run 3 times each with `claude-opus-5-5` in Claude Code, the assistant logged meaningful changes with a focused entry 60/63 times (95.2%), skipped routine and unfinished edits 27/27 times, and claimed no checks it didn't run in any of 63 entries. One model and one client only; details in [`eval/results/`](./eval/results/).
   - Phase 5 complete; gate closed. Asked to review a seeded entry by ID, the assistant fixed the bug and logged a follow-up for all 12 real-bug runs (R01–R04), and made no edit and no new entry in all 18 false-alarm, already-fixed, replaced-code and deleted-file runs (R05–R10). In every fix run the fixture's baseline suite passed. That suite covers only success paths, so the fixes were checked separately afterwards: a preserved failure-path check ([`eval/phase5_regression_checks.py`](./eval/phase5_regression_checks.py)) fails on the unfixed fixture and passes on all 12 fix runs. The sessions added no regression tests of their own. `tests/test_eval_checks.py` keeps that check honest in the main suite: it must fail on the unfixed fixture and pass with a reference fix (GitHub Actions on `d736517`, Python 3.11 and 3.14: full suite `24 passed` on both jobs; locally on Windows `23 passed, 1 skipped`). Same model and client as Phase 4; details in [`eval/results/`](./eval/results/).
-  - **Phase 6:** all three work items are done; the gate closes once CI confirms the final commit. (Clean-room installs; hardening suite; this README, [`architecture.md`](./architecture.md) and the archive workflow.)
+  - **Phase 6 complete; gate closed.** GitHub Actions on `a3ee90f` (`ubuntu-latest`, Python 3.11 and 3.14): "Run pytest" succeeded on both jobs; the exact count is in the job logs, which the API only shows to repo admins. (Clean-room installs; hardening suite; this README, [`architecture.md`](./architecture.md) and the archive workflow.)
     - Locally on Windows 11 (Python 3.14.7 and 3.11.16): `33 passed, 1 skipped`.
     - GitHub Actions on `72ba7b4` (the hardening suite before the archive test): "Run pytest" succeeded on both Python 3.11 and 3.14.
     - `tests/test_phase6_hardening.py` covers:
@@ -246,11 +246,7 @@ Each run got the prompt *"Review Code Story entry `<ID>` for mistakes and fix an
 
 ## Planned (not yet implemented)
 
-The capabilities below are scheduled for upcoming phases in [`tasks.md`](./tasks.md) and will move to **What works** only after each phase's verification gate passes:
-
-- **Phase 6 gate:** the work is done and described above; the gate closes once CI confirms the final commit.
-
-Possibly later, not scheduled: Codex support, a second-pass reviewer, and diff-capture hooks.
+All six phases in [`tasks.md`](./tasks.md) are complete. Nothing else is scheduled. Possible later work: Codex support, a second-pass reviewer, diff-capture hooks, and wider evaluations (follow-up turns, other models).
 
 ## Compatibility
 
