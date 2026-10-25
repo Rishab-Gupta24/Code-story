@@ -1,6 +1,6 @@
 # Code Story — Build Plan, Rules, and Verification (`0.1.0`)
 
-**Current Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off). Phase 2 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): full suite `16 passed` on both jobs, including all 8 tests in `tests/test_phase2_review.py`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `15 passed, 1 skipped` (the Phase 1 symlink skip). Phase 3 complete; gate closed: a live Claude Code 2.1.308 session (`claude-opus-5-5`) called all three tools without errors (see Phase 3 results). Phase 4 complete; gate closed: meaningful changes logged 60/63 (95.2%), routine and unfinished work skipped 27/27, 0 fabricated checks in 63 entries (see Phase 4 results). Phase 5 complete; gate closed: seeded bugs fixed and logged 12/12, no speculative edits 18/18 (see Phase 5 results). Phase 6 in progress: hardening suite written (local `32 passed, 1 skipped`; 4 fuzz-found bugs fixed), project-scoped clean room passed, user-scoped install and docs not started; Codex removed from its scope (Claude Code only for `0.1.0`; Codex possible later).
+**Current Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off). Phase 2 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): full suite `16 passed` on both jobs, including all 8 tests in `tests/test_phase2_review.py`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `15 passed, 1 skipped` (the Phase 1 symlink skip). Phase 3 complete; gate closed: a live Claude Code 2.1.308 session (`claude-opus-5-5`) called all three tools without errors (see Phase 3 results). Phase 4 complete; gate closed: meaningful changes logged 60/63 (95.2%), routine and unfinished work skipped 27/27, 0 fabricated checks in 63 entries (see Phase 4 results). Phase 5 complete; gate closed: seeded bugs fixed and logged 12/12, no speculative edits 18/18 (see Phase 5 results). Phase 6 in progress: hardening suite written (local `32 passed, 1 skipped`; 4 fuzz-found bugs fixed), project- and user-scoped clean rooms passed, docs (work item 3) not started; Codex removed from its scope (Claude Code only for `0.1.0`; Codex possible later).
 
 Build and verify one phase at a time. Do not advance to the next deterministic phase until the current phase's gate is closed.
 
@@ -349,9 +349,29 @@ Use an isolated run folder copied from `eval/fixture_app/` (see Phase 4) and res
   - A direct stdio client call against the clean-room server gave the same results.
 - **Practical note:** with auto mode, a transient safety-check outage can block Code Story calls. Manual approval works around it.
 
+### Work item 1 results: user-scoped clean room (2026-10-25)
+
+**Status:** user-scoped install passed. Work item 1 is complete.
+
+- **Setup:**
+  - Backed up `~/.claude.json`, which had no user-level MCP servers and no `~/.claude/skills/`.
+  - Copied the clean-room clone's `skills/code-story/` to `~/.claude/skills/code-story/`.
+  - Ran `claude mcp add --scope user code-story -- uv run --directory C:/Users/LAP/code-story-cleanroom/plugin python -m code_story.server`. `claude mcp get` reported `Scope: User config`, `✔ Connected`.
+  - The project (`...\userscope-project`) had no `.claude/` and no `.mcp.json`, so the skill and server could only come from user scope. No pre-approval was needed.
+- **Session:** started in Manual (default) mode to avoid the auto-mode safety-check outage, with the user approving each call.
+- **Prompt 1** (same form as above, for `shipping_cost` and negative `weight_kg`):
+  - The skill loaded on its own and `record_change` wrote `CS-20261025-284D106073D0`.
+  - Checked by hand: both SHA-256 values and the span (lines 3–4) match, and `checks` matches a rerun (`2 passed`).
+  - The review question (NaN slips past `< 0`) is correct.
+- **Prompt 2** (verbatim): the raw responses are in the transcript. `list_changes` gave `"total":1` with no warnings; `get_change` showed both files `unchanged` with `current_span` `[3,4]`.
+- **Afterwards:** a `.claude/settings.local.json` appeared, containing only the user's "always allow" for the pytest command, not a skill copy.
+- **Cleanup:**
+  - `claude mcp remove --scope user code-story`, then deleted `~/.claude/skills/code-story/` and the now-empty `~/.claude/skills/`. `claude mcp get code-story` reports no such server.
+  - Compared with the backup, `~/.claude.json` now has an empty `"mcpServers": {}` (equivalent to none). Its other differences are the app's own bookkeeping (project trust entries, skill-usage counts, a feature-cache timestamp).
+
 ### Work item 2 results: hardening suite (2026-10-25)
 
-**Status:** `tests/test_phase6_hardening.py` written, 9 tests. Full suite locally on Windows 11: `32 passed, 1 skipped` on Python 3.14.7 and 3.11.16 (the Phase 1 symlink skip). GitHub Actions on `72ba7b4`: "Run pytest" succeeded on both Python 3.11 and 3.14 (exact counts are in the job logs, which need admin access). The gate stays open until the user-scoped install and the docs (work item 3) are done.
+**Status:** `tests/test_phase6_hardening.py` written, 9 tests. Full suite locally on Windows 11: `32 passed, 1 skipped` on Python 3.14.7 and 3.11.16 (the Phase 1 symlink skip). GitHub Actions on `72ba7b4`: "Run pytest" succeeded on both Python 3.11 and 3.14 (exact counts are in the job logs, which need admin access). The gate stays open until the docs (work item 3) are done.
 
 - **Concurrent appends:** 8 processes, released together, append 5 entries each.
   - All 40 entries parse with no warnings or problems, and all 40 IDs are unique.
