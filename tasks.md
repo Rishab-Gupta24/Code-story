@@ -1,6 +1,6 @@
 # Code Story — Build Plan, Rules, and Verification (`0.1.0`)
 
-**Current Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off). Phase 2 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): full suite `16 passed` on both jobs, including all 8 tests in `tests/test_phase2_review.py`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `15 passed, 1 skipped` (the Phase 1 symlink skip). Phase 3 complete; gate closed: a live Claude Code 2.1.308 session (`claude-opus-5-5`) called all three tools without errors (see Phase 3 results). Phase 4 complete; gate closed: meaningful changes logged 60/63 (95.2%), routine and unfinished work skipped 27/27, 0 fabricated checks in 63 entries (see Phase 4 results). Phase 5 complete; gate closed: seeded bugs fixed and logged 12/12, no speculative edits 18/18 (see Phase 5 results). Phase 6 not started.
+**Current Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off). Phase 2 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): full suite `16 passed` on both jobs, including all 8 tests in `tests/test_phase2_review.py`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `15 passed, 1 skipped` (the Phase 1 symlink skip). Phase 3 complete; gate closed: a live Claude Code 2.1.308 session (`claude-opus-5-5`) called all three tools without errors (see Phase 3 results). Phase 4 complete; gate closed: meaningful changes logged 60/63 (95.2%), routine and unfinished work skipped 27/27, 0 fabricated checks in 63 entries (see Phase 4 results). Phase 5 complete; gate closed: seeded bugs fixed and logged 12/12, no speculative edits 18/18 (see Phase 5 results). Phase 6 not started; Codex removed from its scope (Claude Code only for `0.1.0`; Codex possible later).
 
 Build and verify one phase at a time. Do not advance to the next deterministic phase until the current phase's gate is closed.
 
@@ -154,7 +154,7 @@ Build and verify one phase at a time. Do not advance to the next deterministic p
 
 1. **Install in First Client:**
    - **If using Claude Code:** Copy `skills/code-story/` to `<project>/.claude/skills/code-story/` (or `~/.claude/skills/code-story/`) and run `claude mcp add --scope project code-story -- uv run --directory /abs/path/to/code-story code-story`.
-   - **If using Codex:** Add the Codex marketplace catalog and plugin manifest (not yet in the repository), run `codex plugin marketplace add /abs/path/to/code-story`, and install **Code Story** from the local marketplace source.
+   - **If using Codex:** Add the Codex marketplace catalog and plugin manifest (not yet in the repository), run `codex plugin marketplace add /abs/path/to/code-story`, and install **Code Story** from the local marketplace source. *(Not taken: Phase 3 used Claude Code, and Codex is out of scope for `0.1.0`; see Phase 6.)*
 2. **Live Smoke Test:**
    - Prompt the assistant to make one small behavior change in a scratch repo and verify it calls `record_change`.
    - Prompt the assistant to list recent changes (`list_changes`) and inspect the recorded entry (`get_change`).
@@ -299,16 +299,18 @@ Use an isolated run folder copied from `eval/fixture_app/` (see Phase 4) and res
 
 ---
 
-## Phase 6 — Second client, portability, concurrency, scale, and published results
+## Phase 6 — Clean-room setup, portability, concurrency, scale, and published results
 
-**Goal:** Verify the second client, add automated stress/fuzz coverage, write `architecture.md` reflecting the settled code, and publish measured timings and evaluation rates in `README.md`.
+**Goal:** Verify a clean-room Claude Code setup, add automated stress/fuzz coverage, write `architecture.md` reflecting the settled code, and publish measured timings and evaluation rates in `README.md`.
+
+**Scope change (2026-10-25):** Codex was removed from Phase 6. Claude Code is the only supported client for `0.1.0`. The original plan called for a Codex smoke test as the second client; Codex isn't installed on the test machine, so that step is dropped rather than left as an open gate. Codex support may be added later (see **Possible later: Codex** below); it is not part of this gate.
 
 ### Work
 
-1. **Second Client & Portability Verification:**
-   - Install and smoke-test in the second supported client (Codex if Phase 3 used Claude Code, or Claude Code if Phase 3 used Codex).
-   - Verify both project-scoped (`.claude/skills/code-story/`) and user-scoped (`~/.claude/skills/code-story/`) installs in Claude Code.
-   - Verify path handling across platforms and record exact tested client and runtime versions in `README.md`.
+1. **Clean-Room Setup & Portability Verification (Claude Code):**
+   - Starting from a fresh folder and following only `README.md`, install and smoke-test the project-scoped install (`.claude/skills/code-story/` plus `claude mcp add --scope project`).
+   - Do the same for the user-scoped install (`~/.claude/skills/code-story/` plus `claude mcp add --scope user`).
+   - Verify path handling across platforms (Windows locally, Linux in CI) and record exact tested client and runtime versions in `README.md`.
 2. **Concurrency, Scale & Fuzz Tests (`tests/test_phase6_hardening.py`):**
    - **Concurrent appends:** Spawn 8 worker processes appending 5 entries each (40 total) to the same `.ai-code-log.md`; verify all 40 entries parse cleanly with no interleaved text.
    - **Measured scale timings:** Generate logs of stated sizes (e.g., 100 and 250 entries), measure `record_change`, `list_changes`, and `get_change` latencies, and record the median/p95 timings along with the exact CPU/OS/disk specs of the test machine.
@@ -318,4 +320,12 @@ Use an isolated run folder copied from `eval/fixture_app/` (see Phase 4) and res
    - Document the manual archive workflow (moving older entries to `.ai-code-log.archive.md`).
    - Update `README.md` with the verified features, exact client versions, measured timings on the named machine, and Phase 4–5 multi-run evaluation tables.
 
-**Done when:** Both clients pass clean-room setup, `uv run pytest` passes the full Phase 1, 2, and 6 suites, and another engineer can reproduce the setup and published measurements from `README.md`.
+**Done when:** Claude Code passes clean-room setup for both the project-scoped and user-scoped installs, `uv run pytest` passes the full Phase 1, 2, and 6 suites, and another engineer can reproduce the setup and published measurements from `README.md`.
+
+### Possible later: Codex
+
+Not scheduled and not part of any gate. If Codex is added later:
+- Add the Codex marketplace catalog and plugin manifest.
+- Run `codex plugin marketplace add /abs/path/to/code-story` and install **Code Story** from the local source.
+- Repeat the Phase 3 smoke test (all three tools over stdio) in Codex and record the client version.
+- Add Codex to `README.md` only after that smoke test passes.

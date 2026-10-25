@@ -139,9 +139,9 @@ claude mcp add --scope project code-story -- uv run --directory C:/absolute/path
 
 Claude Code asks you to approve a project-scoped server from `.mcp.json` the first time it starts in that project.
 
-### Codex
+### Other clients
 
-Codex packaging (a local marketplace catalog and plugin manifest) is **not in the repository yet**. It will be added and verified when Codex is installed in Phase 6.
+Claude Code is the only supported client in `0.1.0`. Codex support (a local marketplace catalog and plugin manifest) is **not included** and isn't scheduled, but it may be added in a later version.
 
 ## Choosing what to log
 
@@ -158,8 +158,9 @@ Log behavior changes, new logic, bug fixes, important data-flow changes, and non
 
 The capabilities below are scheduled for upcoming phases in [`tasks.md`](./tasks.md) and will move to **What works** only after each phase's verification gate passes:
 
-- **Codex packaging (Phase 6):** Local marketplace catalog and plugin manifest for installing Code Story in Codex.
-- **Hardening and portability (Phase 6):** A second-client smoke test, concurrency/scale benchmarks, and optional post-Phase 6 exploration (second-pass reviewer, diff-capture hooks).
+- **Hardening and portability (Phase 6):** Clean-room setup checks for project-scoped and user-scoped Claude Code installs, concurrency/scale benchmarks, and fuzz tests.
+
+Possibly later, not scheduled: Codex support, a second-pass reviewer, and diff-capture hooks.
 
 ## Compatibility
 
@@ -169,4 +170,4 @@ The package includes a skill (`skills/code-story/SKILL.md`) and a stdio MCP serv
 | --- | --- | --- | --- | --- |
 | Claude Code (bundled with the Claude desktop app) | 2.1.308 | `claude-opus-5-5` (medium effort) | Windows 11 build 26200, Python 3.14.7, uv 0.12.17 | Phase 3 smoke test passed: one session called `record_change`, `list_changes`, and `get_change` with no errors. |
 
-This is one smoke test in one session, not a behavioral evaluation; Phase 4 measures logging behavior across repeated runs. Codex is not tested yet (Phase 6). See `LICENSE` for the MIT license.
+This is one smoke test in one session, not a behavioral evaluation; Phase 4 measures logging behavior across repeated runs. Claude Code is the only supported client in `0.1.0`; Codex is not supported or tested, though support may be added later. See `LICENSE` for the MIT license.
