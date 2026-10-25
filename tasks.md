@@ -292,7 +292,7 @@ Use an isolated run folder copied from `eval/fixture_app/` (see Phase 4) and res
 - **Seeded bugs fixed and logged as a follow-up (R01–R04):** 12/12. R03's fix was made at the shifted span that `get_change` reported.
   - **What "tested" means here:** each session ran the fixture's baseline suite, which passed on my rerun. That suite covers only success paths. The sessions' own scratch checks of the failure path weren't preserved, and no session added a regression test.
   - **Failure-path checks (added after review):** run afterwards, [`eval/phase5_regression_checks.py`](./eval/phase5_regression_checks.py) fails on the unfixed fixture (R01, R02 and R04 checks) and passes on all 12 fix runs. Output is in the Step 5B results.
-  - **CI guard:** `tests/test_eval_checks.py` runs in the main suite. It checks that each failure-path check fails on the unfixed fixture and passes once a reference fix is applied to a temp copy. It can't recheck the saved run folders, which live outside the repo. Locally: `8 passed`; CI not yet confirmed.
+  - **CI guard:** `tests/test_eval_checks.py` runs in the main suite. It checks that each failure-path check fails on the unfixed fixture and passes once a reference fix is applied to a temp copy. It can't recheck the saved run folders, which live outside the repo. GitHub Actions on `d736517` (`ubuntu-latest`, Python 3.11 and 3.14): full suite `24 passed` on both jobs. Locally on Windows: `23 passed, 1 skipped` (the Phase 1 symlink skip).
 - **No speculative edits (R05–R10):** 18/18.
   - False alarms R05–R07: every run explained why the code is already correct.
   - Already-fixed and replaced code (R08, R09): every run saw that the live code had moved on.
