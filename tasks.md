@@ -289,13 +289,17 @@ Use an isolated run folder copied from `eval/fixture_app/` (see Phase 4) and res
 
 **Status:** Phase 5 complete; gate closed. All ten review cases passed every run (3 runs each, `claude-opus-5-5`, Claude Code 2.1.308). Per-run scoring and the starting drift for each case are in [`eval/results/step5b-2026-10-25.md`](./eval/results/step5b-2026-10-25.md).
 
-- **Seeded bugs fixed, tested and logged as a follow-up (R01–R04):** 12/12. R03's fix was made at the shifted span that `get_change` reported.
+- **Seeded bugs fixed and logged as a follow-up (R01–R04):** 12/12. R03's fix was made at the shifted span that `get_change` reported.
+  - **What "tested" means here:** each session ran the fixture's baseline suite, which passed on my rerun. That suite covers only success paths. The sessions' own scratch checks of the failure path weren't preserved, and no session added a regression test.
+  - **Failure-path checks (added after review):** run afterwards, [`eval/phase5_regression_checks.py`](./eval/phase5_regression_checks.py) fails on the unfixed fixture (R01, R02 and R04 checks) and passes on all 12 fix runs. Output is in the Step 5B results.
 - **No speculative edits (R05–R10):** 18/18.
   - False alarms R05–R07: every run explained why the code is already correct.
   - Already-fixed and replaced code (R08, R09): every run saw that the live code had moved on.
   - Deleted file (R10): every run reported the missing file and did not recreate it.
 - **Fixture change:** `fixture_app/retry.py` was added for R07. The baseline is now 8 passed, and all 35 Phase 4 bug probes still reproduce.
 - **Caveat:** setup steps were applied before each run folder's first commit, so git history doesn't show the earlier state. R10 sessions said the file "was never committed" rather than "was deleted".
+- **Transcripts:** `get_change` calls were verified by searching the session transcripts, which the Claude app stores. The run folders don't contain transcripts, so the calls can't be checked from the folders alone.
+- **For future review evals:** make a committed regression test for the failure path part of each fix case's pass criteria, and save its output. Commit the clean fixture before applying setup steps, so a deletion (R10) shows up in git history.
 
 ---
 
