@@ -9,7 +9,7 @@ Code Story is a stdio MCP server (Python 3.11+, `uv`) that lets a coding assista
 - `src/code_story/server.py`: MCP tools `record_change`, `list_changes`, `get_change` (wraps errors as `{"ok": false, "error": <code>}`).
 - `skills/code-story/SKILL.md`: assistant-facing instructions for when and how to log.
 - `eval/fixture_app/`: Phase 4–5 fixture app (its own `pyproject.toml`; not part of this package's test run). `eval/tasks_bank.yaml` (Phase 4) and `eval/review_cases.yaml` (Phase 5): prompts plus answer keys; scored runs in `eval/results/`. `eval/phase5_regression_checks.py` runs the R01–R04 failure paths against run folders (the baseline suite covers only success paths). Run evaluations only in a copy outside this repo, so the answer key and this file never reach the assistant under test.
-- `tests/test_phase1_log.py`, `tests/test_phase2_review.py`: Phase 1 and 2 suites. `tests/test_eval_checks.py`: guards the Phase 5 failure-path checks (fail on the unfixed fixture, pass with a reference fix). CI: `.github/workflows/tests.yml` (Python 3.11 and 3.14 on Ubuntu).
+- `tests/test_phase1_log.py`, `tests/test_phase2_review.py`: Phase 1 and 2 suites. `tests/test_phase6_hardening.py`: 8-process concurrent appends, scale timings (`CODE_STORY_TIMINGS_OUT=<file>` saves them), fixed-seed fuzzing. `tests/test_eval_checks.py`: guards the Phase 5 failure-path checks (fail on the unfixed fixture, pass with a reference fix). CI: `.github/workflows/tests.yml` (Python 3.11 and 3.14 on Ubuntu).
 
 ## Commands
 

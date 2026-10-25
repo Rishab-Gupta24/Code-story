@@ -1,6 +1,6 @@
 # Code Story — Build Plan, Rules, and Verification (`0.1.0`)
 
-**Current Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off). Phase 2 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): full suite `16 passed` on both jobs, including all 8 tests in `tests/test_phase2_review.py`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `15 passed, 1 skipped` (the Phase 1 symlink skip). Phase 3 complete; gate closed: a live Claude Code 2.1.308 session (`claude-opus-5-5`) called all three tools without errors (see Phase 3 results). Phase 4 complete; gate closed: meaningful changes logged 60/63 (95.2%), routine and unfinished work skipped 27/27, 0 fabricated checks in 63 entries (see Phase 4 results). Phase 5 complete; gate closed: seeded bugs fixed and logged 12/12, no speculative edits 18/18 (see Phase 5 results). Phase 6 not started; Codex removed from its scope (Claude Code only for `0.1.0`; Codex possible later).
+**Current Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off). Phase 2 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): full suite `16 passed` on both jobs, including all 8 tests in `tests/test_phase2_review.py`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `15 passed, 1 skipped` (the Phase 1 symlink skip). Phase 3 complete; gate closed: a live Claude Code 2.1.308 session (`claude-opus-5-5`) called all three tools without errors (see Phase 3 results). Phase 4 complete; gate closed: meaningful changes logged 60/63 (95.2%), routine and unfinished work skipped 27/27, 0 fabricated checks in 63 entries (see Phase 4 results). Phase 5 complete; gate closed: seeded bugs fixed and logged 12/12, no speculative edits 18/18 (see Phase 5 results). Phase 6 in progress: hardening suite written (local `32 passed, 1 skipped`; 4 fuzz-found bugs fixed), clean-room installs and docs not started; Codex removed from its scope (Claude Code only for `0.1.0`; Codex possible later).
 
 Build and verify one phase at a time. Do not advance to the next deterministic phase until the current phase's gate is closed.
 
@@ -326,6 +326,39 @@ Use an isolated run folder copied from `eval/fixture_app/` (see Phase 4) and res
    - Update `README.md` with the verified features, exact client versions, measured timings on the named machine, and Phase 4–5 multi-run evaluation tables.
 
 **Done when:** Claude Code passes clean-room setup for both the project-scoped and user-scoped installs, `uv run pytest` passes the full Phase 1, 2, and 6 suites, and another engineer can reproduce the setup and published measurements from `README.md`.
+
+### Work item 2 results: hardening suite (2026-10-25)
+
+**Status:** `tests/test_phase6_hardening.py` written, 9 tests. Full suite locally on Windows 11: `32 passed, 1 skipped` on Python 3.14.7 and 3.11.16 (the Phase 1 symlink skip). CI not yet confirmed. Work items 1 and 3 not started, so the gate stays open.
+
+- **Concurrent appends:** 8 processes, released together, append 5 entries each.
+  - All 40 entries parse with no warnings or problems, and all 40 IDs are unique.
+  - Each worker's entries appear in the order it wrote them.
+  - Each entry's body (a 2,000-character explanation, excerpt and review prompt) belongs to the worker named in its title, so nothing interleaved.
+- **Fuzzing:** stdlib `random` with fixed seeds, so failures reproduce. No new dependencies.
+  - **Parser:** 2,000 random documents built from Unicode (CJK, Hangul, emoji with ZWJ, NBSP, zero-width space, U+2028/2029, BOM) mixed with fake and damaged headers, `**Recorded:**` lines, and backtick and tilde fences. `parse_log` never raises, and entry line numbers stay strictly increasing.
+  - **Round trip:** 80 entries whose excerpts mix Unicode with nested backtick and tilde runs (1–9 long, indented 0–6 spaces) and lone CRs. Every ID, title and excerpt reads back exactly, with no warnings, and sampled `get_change` calls report `unchanged`.
+  - **Truncation:** 400 random cuts of a 12-entry log. Every entry before the cut parses exactly as in the full log, and at most one trailing entry is cut short. A cut inside the next header leaves a damaged header line, which folds into the previous entry and is flagged there, as specified in Phase 2.
+  - **Validator:** 600 calls with 1–3 arguments replaced by garbage (wrong types, NUL bytes, lone surrogates, traversal, absolute and UNC paths, missing files). Only `CodeStoryValidationError` is raised, and whatever succeeded leaves a log that still parses cleanly.
+  - **Extra seeds:** a one-off run of the four fuzz tests under 25 more seeds (1000–1024) found no failures. This isn't part of the suite.
+- **Bugs the fuzzing found and fixed** (each now has a targeted regression test):
+  1. **Lone surrogates:** a lone surrogate (e.g. from a JSON `"\ud800"` escape) passed validation, then crashed the write with an uncaught `UnicodeEncodeError`. Over MCP that's an unhandled exception instead of `VALIDATION_ERROR`. Text fields, `files` entries and `project_root` are now checked for UTF-8 before anything is written.
+  2. **Lone `\r` read back as `\n`:** `_read_log` used `read_text()`, whose newline translation turned a lone `\r` inside an excerpt into `\n`. That produced a false "log was hand-edited" warning, and after any file change a false `excerpt_modified_or_removed`. It now decodes the raw bytes; `parse_log` already handles CRLF itself.
+  3. **Trailing `\r`:** an excerpt ending in a lone `\r` (a CRLF line ending cut before its `\n`) could never match the file, so it was rejected as not found. `normalize_excerpt` now drops that trailing `\r`.
+  4. **Non-string `code_language`:** raised `AttributeError` instead of a validation error. Over MCP the SDK type-checks this first, so only direct library callers were affected.
+- **Scale timings:** library functions behind the MCP tools, with no stdio round trip. Each operation was run 30 times.
+  - For `record_change`, the log grew from the stated size by 30 entries during measurement.
+  - `list_changes` used `limit=50`. `get_change` read the middle entry, including drift hashing of a 500–1,000-line source file.
+
+  | Log entries (bytes) | `record_change` median / p95 | `list_changes` median / p95 | `get_change` median / p95 |
+  | --- | --- | --- | --- |
+  | 100 → 130 (68 KB) | 3.20 / 3.61 ms | 7.51 / 12.01 ms | 7.97 / 9.38 ms |
+  | 250 → 280 (147 KB) | 3.46 / 4.12 ms | 14.17 / 20.07 ms | 14.95 / 29.29 ms |
+
+  - **Machine:** AMD Ryzen 9 8940HX (32 logical CPUs), Micron `MTFDKBA1T0QGN` NVMe SSD, Windows 11 build 26200, Python 3.14.7. Run in `%TEMP%` on that SSD.
+  - **Reproduce:** set `CODE_STORY_TIMINGS_OUT=<file>` and run `uv run pytest tests/test_phase6_hardening.py -k scale`.
+  - **What it shows:** reads scale roughly linearly with log size (every call parses the whole log). Appends stay flat.
+  - **Limits:** one run on one machine. The test only asserts a loose 2 s p95 ceiling, to catch pathological slowdowns.
 
 ### Possible later: Codex
 

@@ -84,7 +84,11 @@ class _FileFingerprint:
 
 def normalize_excerpt(text: str) -> str:
     """Normalize line endings and trim leading/trailing blank lines only."""
-    lines = text.replace("\r\n", "\n").split("\n")
+    text = text.replace("\r\n", "\n")
+    if text.endswith("\r"):
+        # The remains of a CRLF line ending cut off before its "\n".
+        text = text[:-1]
+    lines = text.split("\n")
     while lines and not lines[0].strip():
         lines.pop(0)
     while lines and not lines[-1].strip():
@@ -106,9 +110,21 @@ def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _require_utf8(name: str, value: str) -> None:
+    """Reject text the log can't store, such as lone surrogates from JSON escapes."""
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise CodeStoryValidationError(
+            f"{name} contains characters that can't be encoded as UTF-8 "
+            f"(position {exc.start}); remove them and retry."
+        ) from exc
+
+
 def _validate_root(project_root: object) -> Path:
     if not isinstance(project_root, str) or not project_root.strip():
         raise CodeStoryValidationError("project_root is required.")
+    _require_utf8("project_root", project_root)
     root = Path(project_root)
     if not root.is_absolute():
         raise CodeStoryValidationError(
@@ -129,6 +145,7 @@ def _validate_files(root: Path, files: object) -> list[tuple[str, Path]]:
     for raw in files:
         if not isinstance(raw, str) or not raw.strip():
             raise CodeStoryValidationError("files entries must be non-empty strings.")
+        _require_utf8("files entry", raw)
         if PurePath(raw).is_absolute() or Path(raw).is_absolute():
             raise CodeStoryValidationError(
                 f"files entries must be relative to project_root: {raw!r}"
@@ -268,8 +285,13 @@ def record_change_entry(
         value = text_fields[name]
         if not isinstance(value, str) or not value.strip():
             raise CodeStoryValidationError(f"{name} is required and may not be blank.")
+        _require_utf8(name, value)
 
-    code_language = (code_language or "").strip()
+    if code_language is None:
+        code_language = ""
+    if not isinstance(code_language, str):
+        raise CodeStoryValidationError("code_language must be a string.")
+    code_language = code_language.strip()
     if not _CODE_LANGUAGE_RE.match(code_language):
         raise CodeStoryValidationError(
             f"code_language must be a simple identifier: {code_language!r}"
@@ -364,7 +386,9 @@ def _read_log(root: Path, lock_timeout: float) -> str:
         with lock:
             if not log_path.exists():
                 return ""
-            return log_path.read_text(encoding="utf-8")
+            # Decode bytes directly: read_text() would turn a lone "\r" inside a
+            # logged excerpt into "\n" and break its SHA-256 and span matching.
+            return log_path.read_bytes().decode("utf-8")
     except Timeout as exc:
         raise LockTimeoutError(
             f"Timed out after {lock_timeout:g}s waiting for {LOCK_FILENAME}."
