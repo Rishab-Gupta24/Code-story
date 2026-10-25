@@ -359,3 +359,30 @@ def test_lone_carriage_returns_round_trip(tmp_path: Path) -> None:
         change = get_change_entry(str(tmp_path), entry_id)
         assert change["warnings"] == [] and change["drift"][0]["state"] == UNCHANGED
         assert change["drift"][0]["current_span"] == [2, 2]
+
+
+# ------------------------------------------------------------------ archive workflow
+
+
+def test_archive_split_at_entry_header(tmp_path: Path) -> None:
+    """The README's manual archive workflow: cut at an entry header, move the older part."""
+    (tmp_path / "m.py").write_text("".join(f"x{i} = {i}\n" for i in range(6)), encoding="utf-8")
+    ids = [_record(tmp_path, "m.py", f"x{i} = {i}", f"Entry {i}") for i in range(6)]
+    log = tmp_path / LOG_FILENAME
+    text = log.read_bytes().decode("utf-8")
+
+    cut = text.index(f"## {ids[4]} ")  # keep the two newest entries
+    (tmp_path / ".ai-code-log.archive.md").write_text(text[:cut], encoding="utf-8", newline="\n")
+    log.write_text(text[cut:], encoding="utf-8", newline="\n")
+
+    archive = parse_log((tmp_path / ".ai-code-log.archive.md").read_text(encoding="utf-8"))
+    assert [e.entry_id for e in archive.entries] == ids[:4] and archive.warnings == []
+    kept = list_change_entries(str(tmp_path), 50)
+    assert [e["entry_id"] for e in kept["entries"]] == [ids[5], ids[4]] and kept["warnings"] == []
+    assert get_change_entry(str(tmp_path), ids[4])["drift"][0]["state"] == UNCHANGED
+    with pytest.raises(CodeStoryValidationError, match="No entry found"):
+        get_change_entry(str(tmp_path), ids[0])  # archived entries aren't searched
+
+    new_id = _record(tmp_path, "m.py", "x0 = 0", "After archiving")
+    assert list_change_entries(str(tmp_path), 50)["entries"][0]["entry_id"] == new_id
+    assert parse_log(log.read_bytes().decode("utf-8")).warnings == []

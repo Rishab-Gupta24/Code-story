@@ -4,6 +4,8 @@ Code Story is a stdio MCP server (Python 3.11+, `uv`) that lets a coding assista
 
 ## Layout
 
+`architecture.md` describes how the code works; keep it in sync when behavior changes.
+
 - `src/code_story/log.py`: validation, excerpt matching, secret scanning, fencing, locking (`record_change_entry`).
 - `src/code_story/review.py`: fence-aware parser with recovery (`parse_log`), five-state drift, `list_change_entries` / `get_change_entry`.
 - `src/code_story/server.py`: MCP tools `record_change`, `list_changes`, `get_change` (wraps errors as `{"ok": false, "error": <code>}`).

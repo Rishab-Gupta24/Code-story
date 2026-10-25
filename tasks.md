@@ -1,6 +1,6 @@
 # Code Story — Build Plan, Rules, and Verification (`0.1.0`)
 
-**Current Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off). Phase 2 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): full suite `16 passed` on both jobs, including all 8 tests in `tests/test_phase2_review.py`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `15 passed, 1 skipped` (the Phase 1 symlink skip). Phase 3 complete; gate closed: a live Claude Code 2.1.308 session (`claude-opus-5-5`) called all three tools without errors (see Phase 3 results). Phase 4 complete; gate closed: meaningful changes logged 60/63 (95.2%), routine and unfinished work skipped 27/27, 0 fabricated checks in 63 entries (see Phase 4 results). Phase 5 complete; gate closed: seeded bugs fixed and logged 12/12, no speculative edits 18/18 (see Phase 5 results). Phase 6 in progress: hardening suite written (local `32 passed, 1 skipped`; 4 fuzz-found bugs fixed), project- and user-scoped clean rooms passed, docs (work item 3) not started; Codex removed from its scope (Claude Code only for `0.1.0`; Codex possible later).
+**Current Status:** Phase 1 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): `8 passed` in `tests/test_phase1_log.py` on both jobs, including `test_reject_symlink_escape`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `7 passed, 1 skipped`, because `test_reject_symlink_escape` skips when Windows refuses symlink creation (Developer Mode off). Phase 2 complete; gate closed. GitHub Actions (`ubuntu-latest`, Python 3.11 and 3.14): full suite `16 passed` on both jobs, including all 8 tests in `tests/test_phase2_review.py`. Locally on Windows 11 (Python 3.11.16 and 3.14.7): `15 passed, 1 skipped` (the Phase 1 symlink skip). Phase 3 complete; gate closed: a live Claude Code 2.1.308 session (`claude-opus-5-5`) called all three tools without errors (see Phase 3 results). Phase 4 complete; gate closed: meaningful changes logged 60/63 (95.2%), routine and unfinished work skipped 27/27, 0 fabricated checks in 63 entries (see Phase 4 results). Phase 5 complete; gate closed: seeded bugs fixed and logged 12/12, no speculative edits 18/18 (see Phase 5 results). Phase 6 work complete (local `33 passed, 1 skipped`; 4 fuzz-found bugs fixed; project- and user-scoped clean rooms passed; `architecture.md`, archive workflow and README results written); gate closes once CI confirms the final commit; Codex removed from its scope (Claude Code only for `0.1.0`; Codex possible later).
 
 Build and verify one phase at a time. Do not advance to the next deterministic phase until the current phase's gate is closed.
 
@@ -369,9 +369,38 @@ Use an isolated run folder copied from `eval/fixture_app/` (see Phase 4) and res
   - `claude mcp remove --scope user code-story`, then deleted `~/.claude/skills/code-story/` and the now-empty `~/.claude/skills/`. `claude mcp get code-story` reports no such server.
   - Compared with the backup, `~/.claude.json` now has an empty `"mcpServers": {}` (equivalent to none). Its other differences are the app's own bookkeeping (project trust entries, skill-usage counts, a feature-cache timestamp).
 
+### Work item 3 results: documentation (2026-10-25)
+
+**Status:** done. Locally the full suite is `33 passed, 1 skipped` on Python 3.14.7 and 3.11.16. The Phase 6 gate closes once CI confirms this commit.
+
+- **`architecture.md`:** written from the code as it stands. It covers:
+  - the modules and error model;
+  - the order of steps in `record_change`;
+  - the entry layout;
+  - the locked append and read;
+  - parser fence tracking and recovery;
+  - the drift decision table;
+  - concurrency and durability (a mid-write crash is the expected worst case; no test kills a writer);
+  - design decisions, known limitations, and a map of the tests.
+- **Archive workflow:** the README's "Archiving old entries" section gives four manual steps:
+  1. stop writers;
+  2. cut at an entry header;
+  3. move the older part to `.ai-code-log.archive.md`;
+  4. check with `list_changes`.
+
+  It's backed by a new test, `test_archive_split_at_entry_header`: both halves parse with no warnings, archived IDs return "No entry found", and later appends work.
+- **`README.md`:**
+  - a Phase 6 test-status line;
+  - the UTF-8 and trailing-CR validation behavior;
+  - a Performance section (the timing table, machine, and reproduce command for bash and PowerShell);
+  - an Evaluation results section (Phase 4 by category, Phase 5 by case, with the scoped caveats);
+  - clean-room rows in Compatibility, with the tested `mcp`/`filelock` versions;
+  - a troubleshooting note on auto mode's safety-check outage;
+  - an "untested environments" line (synced folders, network drives, macOS).
+
 ### Work item 2 results: hardening suite (2026-10-25)
 
-**Status:** `tests/test_phase6_hardening.py` written, 9 tests. Full suite locally on Windows 11: `32 passed, 1 skipped` on Python 3.14.7 and 3.11.16 (the Phase 1 symlink skip). GitHub Actions on `72ba7b4`: "Run pytest" succeeded on both Python 3.11 and 3.14 (exact counts are in the job logs, which need admin access). The gate stays open until the docs (work item 3) are done.
+**Status:** `tests/test_phase6_hardening.py` written, 9 tests. Full suite locally on Windows 11: `32 passed, 1 skipped` on Python 3.14.7 and 3.11.16 (the Phase 1 symlink skip). GitHub Actions on `72ba7b4`: "Run pytest" succeeded on both Python 3.11 and 3.14 (exact counts are in the job logs, which need admin access). The docs (work item 3) are now done too; see below.
 
 - **Concurrent appends:** 8 processes, released together, append 5 entries each.
   - All 40 entries parse with no warnings or problems, and all 40 IDs are unique.
